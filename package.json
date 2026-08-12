@@ -1,0 +1,12 @@
+{
+  "name": "amatopay-frontend",
+  "private": true,
+  "scripts": {
+    "css:build": "tailwindcss -i ./assets/css/tailwind.css -o ./static/portal/css/tailwind.css --minify",
+    "css:watch": "tailwindcss -i ./assets/css/tailwind.css -o ./static/portal/css/tailwind.css --watch"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.1.11",
+    "tailwindcss": "^4.1.11"
+  }
+}

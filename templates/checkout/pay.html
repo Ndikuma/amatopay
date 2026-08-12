@@ -1,0 +1,62 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#071c27">
+        <title>Pay {{ merchant.display_name }} · AmatoPay</title>
+        <link rel="stylesheet" href="{% static 'checkout/css/pay.css' %}">
+    </head>
+    <body>
+        <main class="checkout-shell">
+            <section class="order-panel" aria-label="Order summary">
+                <div class="checkout-brand"><span class="brand-mark">A</span><span>Amato<strong>Pay</strong></span></div>
+                <div class="merchant-block">
+                    <div class="merchant-logo">{{ merchant.display_name|first|upper }}</div>
+                    <p>Paying</p>
+                    <h1>{{ merchant.display_name }}</h1>
+                    <span>Order #{{ session.order_number }}</span>
+                </div>
+                <div class="order-description">
+                    <span>Purchase</span>
+                    <p>{{ session.description }}</p>
+                </div>
+                <div class="summary-lines">
+                    <div><span>Subtotal</span><span>{{ session.amount|floatformat:0 }} {{ session.currency }}</span></div>
+                    <div><span>Payment fee</span><span>Covered by merchant</span></div>
+                    <div class="summary-total"><span>Total due</span><strong>{{ session.total_amount|floatformat:0 }} <small>{{ session.currency }}</small></strong></div>
+                </div>
+                <p class="order-reference">Secure checkout · {{ session.session_id|stringformat:'s'|slice:':8' }}</p>
+            </section>
+            <section class="payment-panel">
+                <div class="payment-content">
+                    <div class="payment-heading">
+                        <span class="secure-label"><span aria-hidden="true">◇</span> Secure payment</span>
+                        <h2>Approve your payment request</h2>
+                        <p>AmatoPay has verified your mobile alias and sent a secure request to your institution.</p>
+                    </div>
+                    <div class="payment-method selected" aria-label="Mobile payment selected"><span class="method-icon">▣</span><span><strong>Mobile payment</strong><small>Approve through your institution</small></span><span class="radio" aria-hidden="true"></span></div>
+                    <div class="alias-field"><span>BI</span><strong>{{ session.payer_alias }}</strong></div>
+                    <p class="field-hint">Verified for {{ session.payer_display_name|default:"the payer" }}.</p>
+                    <div id="payment-status"
+                         class="payment-status"
+                         role="status"
+                         aria-live="polite"
+                         >Approve the request in your banking or mobile-money application.</div>
+                    <div class="trust-row">
+                        <span aria-hidden="true">▱</span>
+                        <p><strong>Your payment is protected</strong><small>AmatoPay never stores your banking credentials.</small></p>
+                    </div>
+                </div>
+                <footer>
+                    Powered securely by <strong>AmatoPay</strong><span>·</span><a href="#">Privacy</a><span>·</span><a href="#">Help</a>
+                </footer>
+            </section>
+        </main>
+        {{ session.session_id|json_script:"session-id" }}
+        {{ session.client_secret|json_script:"client-secret" }}
+        {{ session.return_url|json_script:"return-url" }}
+        <script src="{% static 'checkout/js/pay.js' %}" defer></script>
+    </body>
+</html>

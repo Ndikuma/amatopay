@@ -1,0 +1,6 @@
+/* AmatoPay operations theme: deep navy surfaces with teal/mint action accents. */
+.amp-dashboard-head{background:radial-gradient(circle at 0 0,rgba(94,234,212,.14),transparent 30rem),linear-gradient(135deg,#071f2b,#0b303b);border:1px solid #164554;box-shadow:0 18px 42px rgba(7,31,43,.2)}
+.amp-dashboard-head .amp-eyebrow{color:#7de0d1}.amp-gateway{background:rgba(255,255,255,.055);border-color:#245362}.amp-live-dot{background:#f59e0b}.amp-gateway.is-live .amp-live-dot{background:#5eead4}
+.amp-stat-card{border-radius:.75rem;overflow:hidden;position:relative}.amp-stat-card:before{background:#11a89a;border-radius:.75rem 0 0 .75rem;bottom:0;content:"";left:0;position:absolute;top:0;width:3px}.amp-stat-icon{background:#effcf9;color:#0d897f}.dark .amp-stat-icon{background:rgba(17,168,154,.14);color:#7de0d1}
+.amp-panel,.amp-models{border-radius:.75rem}.amp-panel-head a,.amp-table td a{color:#0d897f}.dark .amp-panel-head a,.dark .amp-table td a{color:#7de0d1}.amp-bar{background:linear-gradient(180deg,#5eead4,#11a89a);box-shadow:0 5px 12px rgba(17,168,154,.2)}
+.amp-quick-links a:hover{background:#effcf9;color:#106f69}.dark .amp-quick-links a:hover{background:rgba(17,168,154,.14);color:#7de0d1}

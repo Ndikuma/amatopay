@@ -1,0 +1,123 @@
+{% extends "admin/base.html" %}
+{% load i18n static %}
+
+{% block title %}Operations overview | {{ site_title }}{% endblock %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'admin/dashboard.css' %}">
+  <link rel="stylesheet" href="{% static 'admin/dashboard-charts.css' %}">
+  <link rel="stylesheet" href="{% static 'admin/dashboard-amatopay.css' %}">
+{% endblock %}
+
+{% block content %}
+<main class="amp-admin-dashboard">
+  <header class="amp-dashboard-head">
+    <div>
+      <span class="amp-eyebrow">Operations overview</span>
+      <h1>Good {{ dashboard_greeting }}, {{ request.user.get_short_name|default:request.user.username }}</h1>
+      <p>Monitor protected funds, payment collection, gateway activity and merchant settlement.</p>
+    </div>
+    <a class="amp-gateway {% if gateway_status.healthy %}is-live{% else %}is-down{% endif %}" href="{{ gateway_status.url }}">
+      <span class="amp-live-dot"></span>
+      <span><strong>{% if gateway_status.healthy %}Gateway active{% else %}Gateway setup required{% endif %}</strong><small>{{ gateway_status.name }} · {{ gateway_status.pending }} processing</small></span>
+      <span class="material-symbols-outlined">chevron_right</span>
+    </a>
+  </header>
+
+  <section class="amp-stat-grid" aria-label="Key payment statistics">
+    {% for card in stat_cards %}
+      <a class="amp-stat-card amp-tone-{{ card.tone }}" href="{{ card.url }}">
+        <span class="amp-stat-icon material-symbols-outlined">{{ card.icon }}</span>
+        <span class="amp-stat-label">{{ card.label }}</span>
+        <strong>{{ card.value }}</strong>
+        <small>{{ card.detail }}</small>
+      </a>
+    {% endfor %}
+  </section>
+
+  <section class="amp-chart-grid" aria-label="Payment analytics">
+    <div class="amp-panel amp-volume-panel">
+      <div class="amp-panel-head">
+        <div><span class="amp-eyebrow">Last 14 days</span><h2>Payment volume</h2></div>
+        <div class="amp-chart-total"><strong>{{ period_summary.volume }}</strong><small>30-day gross volume</small></div>
+      </div>
+      <div class="amp-bar-chart" role="img" aria-label="Daily successful payment volume for the last fourteen days">
+        <div class="amp-chart-lines"><span></span><span></span><span></span><span></span></div>
+        {% for point in volume_chart %}
+          <div class="amp-bar-column" title="{{ point.label }}: {{ point.volume }} across {{ point.count }} payments">
+            <span class="amp-bar-value">{{ point.short_volume }}</span>
+            <span class="amp-bar" style="--bar-height:{{ point.height }}%"></span>
+            <small>{{ point.short_label }}</small>
+          </div>
+        {% endfor %}
+      </div>
+      <div class="amp-chart-caption"><span>{{ volume_chart.0.label }}</span><span>Daily gross successful payments · BIF</span><span>{{ volume_chart.13.label }}</span></div>
+    </div>
+
+    <div class="amp-panel amp-status-panel">
+      <div class="amp-panel-head"><div><span class="amp-eyebrow">Last 30 days</span><h2>Payment status</h2></div><span class="amp-status-total">{{ status_total }} total</span></div>
+      <div class="amp-status-breakdown">
+        {% for status in status_breakdown %}
+          <div class="amp-status-row">
+            <div><span class="amp-legend amp-legend-{{ status.tone }}"></span><strong>{{ status.label }}</strong><small>{{ status.count }} payments</small></div>
+            <b>{{ status.percentage }}%</b>
+            <span class="amp-progress"><i class="amp-progress-{{ status.tone }}" style="width:{{ status.percentage }}%"></i></span>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <div class="amp-dashboard-columns">
+    <section class="amp-panel">
+      <div class="amp-panel-head">
+        <div><span class="amp-eyebrow">Last 30 days</span><h2>Payment performance</h2></div>
+        <a href="{% url 'admin:payments_payment_changelist' %}">View payments <span aria-hidden="true">→</span></a>
+      </div>
+      <div class="amp-period-grid">
+        <div><span>Successful payments</span><strong>{{ period_summary.payments }}</strong></div>
+        <div><span>Gross volume</span><strong>{{ period_summary.volume }}</strong></div>
+        <div><span>AmatoPay fees</span><strong>{{ period_summary.fees }}</strong></div>
+        <div><span>Settled today</span><strong>{{ period_summary.settled_today }}</strong></div>
+      </div>
+      <div class="amp-panel-head amp-recent-head"><div><span class="amp-eyebrow">Live activity</span><h2>Recent payments</h2></div></div>
+      <div class="amp-table-wrap">
+        <table class="amp-table">
+          <thead><tr><th>Reference</th><th>Merchant</th><th>Status</th><th class="is-number">Gross</th><th class="is-number">Fee</th></tr></thead>
+          <tbody>
+          {% for payment in recent_payments %}
+            <tr>
+              <td><a href="{% url 'admin:payments_payment_change' payment.pk %}">{{ payment.reference }}</a><small>{{ payment.created_at|date:"d M, H:i" }}</small></td>
+              <td>{{ payment.merchant.display_name }}</td>
+              <td><span class="amp-status amp-status-{{ payment.status }}">{{ payment.get_status_display }}</span></td>
+              <td class="is-number">{{ payment.amount|floatformat:0 }} {{ payment.currency }}</td>
+              <td class="is-number">{{ payment.fee_amount|floatformat:0 }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="5" class="amp-empty">No payments have been created yet.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <aside class="amp-panel amp-operations">
+      <div class="amp-panel-head"><div><span class="amp-eyebrow">Attention</span><h2>Operations queue</h2></div></div>
+      <div class="amp-operation-list">
+        {% for item in operations %}
+          <a href="{{ item.url }}"><span><strong>{{ item.label }}</strong><small>{{ item.detail }}</small></span><b>{{ item.value }}</b><span class="material-symbols-outlined">chevron_right</span></a>
+        {% endfor %}
+      </div>
+      <div class="amp-quick-links">
+        <h3>Quick actions</h3>
+        <a href="{% url 'admin:merchants_merchant_changelist' %}"><span class="material-symbols-outlined">domain</span>Review merchants</a>
+        <a href="{% url 'admin:settlements_settlement_changelist' %}"><span class="material-symbols-outlined">account_balance</span>Review settlements</a>
+        <a href="{% url 'admin:deliveries_protectionclaim_changelist' %}"><span class="material-symbols-outlined">shield</span>Resolve claims</a>
+      </div>
+    </aside>
+  </div>
+
+  <p class="amp-generated">Updated {{ dashboard_generated_at|date:"d M Y, H:i:s T" }}</p>
+</main>
+{% endblock %}

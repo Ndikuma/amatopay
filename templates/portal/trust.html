@@ -1,0 +1,89 @@
+{% extends 'portal/base.html' %}
+{% block title %}Trust & compliance · AmatoPay{% endblock %}
+{% block content %}
+    <header class="page-header">
+        <div>
+            <p class="eyebrow">Protection & traceability</p>
+            <h1>Trust & compliance</h1>
+            <p class="page-subtitle">See how customer funds, delivery and your business verification are protected.</p>
+        </div>
+        <span class="regulation-badge"><span>BRB</span> Circular 008/SP/2026 aligned</span>
+    </header>
+    <section class="trust-notice">
+        <div class="trust-notice-icon">◇</div>
+        <div>
+            <strong>Customer funds are kept separate from operating funds.</strong>
+            <p>Funds stay in a dedicated fiduciary account until the payer confirms delivery with the six-digit secure code or AmatoPay Operations completes manual proof review. Alternative proof never self-releases funds.</p>
+        </div>
+        <a href="#funds">View protected funds ↓</a>
+    </section>
+    <section class="metrics-grid trust-metrics" aria-label="Protection summary">
+        <article class="metric-card featured">
+            <div class="metric-head"><span>Funds currently protected</span><span class="metric-icon">◇</span></div>
+            <strong class="metric-value">{{ held_total|floatformat:0 }}</strong><span class="metric-unit">BIF across {{ active_hold_count }} transaction{{ active_hold_count|pluralize }}</span></article>
+        <article class="metric-card"><div class="metric-head"><span>Business verification</span><span class="metric-icon success">✓</span></div><strong class="metric-label-value">{% if kyb.verified %}Verified{% elif kyb %}In review{% else %}Not started{% endif %}</strong><span class="metric-unit">{{ verified_documents }} of {{ document_count }} document{{ document_count|pluralize }} verified</span></article>
+        <article class="metric-card">
+            <div class="metric-head"><span>Record retention</span><span class="metric-icon">⌁</span></div>
+            <strong class="metric-label-value">10 years</strong><span class="metric-unit">Transaction and technical audit records</span></article>
+    </section>
+    <div class="two-column-grid section">
+        <section class="panel">
+            <div class="panel-head">
+                <div>
+                    <h2>Protection timeline</h2>
+                    <p>When payment funds become available</p>
+                </div>
+            </div>
+            <div class="protection-flow">
+                <div><i>1</i><span><strong>Payer alias verified</strong><small>AmatoPay verifies that the payer alias exists and is active.</small></span></div>
+                <div><i>2</i><span><strong>Payment authenticated</strong><small>The payer approves the RTP through their financial institution and receives a six-digit release code.</small></span></div>
+                <div><i>3</i><span><strong>Funds protected</strong><small>The completed payment is held separately while the order or service is fulfilled.</small></span></div>
+                <div><i>4</i><span><strong>Delivery reviewed</strong><small>Payer confirms with secure code, or submits alias + proof for AmatoPay Operations review.</small></span></div>
+                <div><i>5</i><span><strong>Funds released</strong><small>Only secure-code confirmation or completed operations review can move net funds into settlement.</small></span></div>
+            </div>
+        </section>
+        <section class="panel">
+            <div class="panel-head">
+                <div>
+                    <h2>Protection windows</h2>
+                    <p>Maximum standard hold periods</p>
+                </div>
+            </div>
+            <div class="window-cards">
+                <div><span>Domestic transactions</span><strong>4</strong><small>business days</small></div>
+                <div><span>International transactions</span><strong>14</strong><small>calendar days</small></div>
+            </div>
+            <p class="panel-note">Suspected fraud, force majeure or a compliance review may extend the hold until the issue is resolved.</p>
+        </section>
+    </div>
+    <section class="panel section" id="funds">
+        <div class="panel-head">
+            <div>
+                <h2>Protected funds register</h2>
+                <p>Latest transaction-level fiduciary movements</p>
+            </div>
+            <span class="count-badge">{{ holds|length }}</span>
+        </div>
+        <div class="table-scroll">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Payment</th>
+                        <th>Payer alias</th>
+                        <th>Order</th>
+                        <th>Amount protected</th>
+                        <th>Scope</th>
+                        <th>Release eligible</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for h in holds %}<tr><td><span class="payment-ref">{{ h.payment.reference }}</span></td><td>{% if h.payment.payer_alias %}<strong>{{ h.payment.masked_payer_alias }}</strong><br><span class="quiet">{{ h.payment.payer_alias_type|title }}{% if h.payment.payer_display_name %} · {{ h.payment.payer_display_name }}{% endif %}</span>{% else %}<span class="quiet">Not available</span>{% endif %}</td><td>{{ h.payment.session.order_number }}</td><td><strong>{{ h.amount|floatformat:0 }}</strong> <span class="currency">{{ h.payment.currency }}</span></td><td>{% if h.international %}International{% else %}Domestic{% endif %}</td><td>{% if h.release_eligible_at %}{{ h.release_eligible_at|date:'d M Y, H:i' }}{% else %}<span class="quiet">After delivery</span>{% endif %}</td><td><span class="status-pill status-{{ h.status }}"><span></span>{{ h.get_status_display }}</span></td></tr>
+                {% empty %}<tr><td colspan="7"><div class="empty-state small"><strong>No protected funds</strong><p>Eligible paid transactions will appear here.</p></div></td></tr>{% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+<section class="panel section"><div class="panel-head"><div><h2>Settlement accounts</h2><p>Verified destinations for released funds</p></div></div><div class="account-list">{% for a in settlement_accounts %}<div><span class="account-icon">◎</span><span><strong>{{ a.account_name|default:'Settlement account' }}</strong><small>{{ a.alias_type }} · {{ a.alias_value }} · {{ a.currency }}</small></span><span class="status-pill status-{{ a.verification_status }}"><span></span>{{ a.get_verification_status_display }}</span></div>{% empty %}<div class="empty-state small"><strong>No settlement account</strong><p>Add and verify an account before receiving payouts.</p></div>{% endfor %}</div></section>
+<p class="regulatory-footnote">This screen summarizes platform controls supporting BRB Circular No. 008/SP/2026. It is operational information, not a representation of regulatory approval.</p>
+{% endblock %}

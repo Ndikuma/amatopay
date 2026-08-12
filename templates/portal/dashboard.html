@@ -1,0 +1,79 @@
+{% extends 'portal/base.html' %}
+{% block title %}Overview · AmatoPay{% endblock %}
+{% block content %}
+    <header class="page-header">
+        <div>
+            <p class="eyebrow">Merchant workspace</p>
+            <h1>Good to see you.</h1>
+            <p class="page-subtitle">Here’s how {{ merchant.display_name }} is performing.</p>
+        </div>
+        <div class="header-actions">
+            <span class="status-pill status-{{ merchant.status }}"><span></span>{{ merchant.get_status_display }}</span>
+            <a class="button button-primary" href="{% url 'portal:payments' %}">View payments <span aria-hidden="true">→</span></a>
+        </div>
+    </header>
+    <section class="metrics-grid" aria-label="Payment summary">
+        <article class="metric-card featured">
+            <div class="metric-head"><span>Payment volume</span><span class="metric-icon">↗</span></div>
+            <strong class="metric-value">{{ stats.volume|floatformat:0 }}</strong>
+            <span class="metric-unit">BIF processed</span>
+        </article>
+        <article class="metric-card">
+            <div class="metric-head"><span>Total payments</span><span class="metric-icon">↔</span></div>
+            <strong class="metric-value">{{ stats.payments }}</strong>
+            <span class="metric-unit">All transactions</span>
+        </article>
+        <article class="metric-card">
+            <div class="metric-head"><span>Successful</span><span class="metric-icon success">✓</span></div>
+            <strong class="metric-value">{{ stats.successful }}</strong>
+            <span class="metric-unit">Confirmed payments</span>
+        </article>
+        <article class="metric-card">
+            <div class="metric-head"><span>Net settled</span><span class="metric-icon">◎</span></div>
+            <strong class="metric-value">{{ stats.settlements|floatformat:0 }}</strong>
+            <span class="metric-unit">BIF paid out</span>
+        </article>
+    </section>
+    <section class="panel section">
+        <div class="panel-head">
+            <div>
+                <h2>Recent payments</h2>
+                <p>Your latest customer transactions</p>
+            </div>
+            <a class="text-link" href="{% url 'portal:payments' %}">View all <span aria-hidden="true">→</span></a>
+        </div>
+        <div class="table-scroll">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Payment</th>
+                        <th>Order</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in recent_payments %}
+                        <tr>
+                            <td><a class="payment-ref" href="{% url 'portal:payment-detail' p.reference %}">{{ p.reference }}</a></td>
+                            <td>{{ p.session.order_number }}</td>
+                            <td><strong>{{ p.amount|floatformat:0 }}</strong> <span class="currency">{{ p.currency }}</span></td>
+                            <td><span class="status-pill status-{{ p.status }}"><span></span>{{ p.get_status_display }}</span></td>
+                            <td><time datetime="{{ p.created_at|date:'c' }}">{{ p.created_at|date:'d M Y, H:i' }}</time></td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="5">
+                                <div class="empty-state">
+                                    <span>↔</span><strong>No payments yet</strong>
+                                    <p>Your first customer payment will appear here.</p>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+{% endblock %}

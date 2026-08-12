@@ -1,0 +1,42 @@
+{% extends 'portal/base.html' %}
+{% block title %}Refunds · AmatoPay{% endblock %}
+{% block content %}
+    <header class="page-header">
+        <div>
+            <p class="eyebrow">Customer care</p>
+            <h1>Refunds</h1>
+            <p class="page-subtitle">Track refunds initiated and processed by AmatoPay Operations.</p>
+        </div>
+    </header>
+    <section class="trust-notice"><div class="trust-notice-icon">↶</div><div><strong>Refund controls are managed by AmatoPay.</strong><p>Merchants can monitor every refund here, but cannot submit or approve refunds. Contact AmatoPay Operations when a payment requires review.</p></div></section>
+    <section class="metrics-grid" aria-label="Refund summary"><article class="metric-card featured"><div class="metric-head"><span>Completed value</span><span class="metric-icon">↶</span></div><strong class="metric-value">{{ completed_total|floatformat:0 }}</strong><span class="metric-unit">BIF returned to customers</span></article><article class="metric-card"><div class="metric-head"><span>Completed refunds</span><span class="metric-icon success">✓</span></div><strong class="metric-value">{{ completed_count }}</strong><span class="metric-unit">Successfully processed</span></article><article class="metric-card"><div class="metric-head"><span>In progress</span><span class="metric-icon">⌛</span></div><strong class="metric-value">{{ pending_count }}</strong><span class="metric-unit">Requested, approved or processing</span></article></section>
+    <section class="panel">
+        <div class="panel-head toolbar">
+            <div>
+                <h2>Refund activity</h2>
+                <p>{{ refunds|length }} recent requests</p>
+            </div>
+            <label class="search-field">
+                <span>⌕</span><span class="sr-only">Search refunds</span><input type="search" placeholder="Search refunds" data-table-search>
+            </label>
+        </div>
+        <div class="table-scroll">
+            <table class="data-table" data-search-table>
+                <thead>
+                    <tr>
+                        <th>Payment</th>
+                        <th>Amount</th>
+                        <th>Reason</th>
+                        <th>Processing reference</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in refunds %}<tr><td><span class="payment-ref">{{ r.payment.reference }}</span></td><td><strong>{{ r.amount|floatformat:0 }}</strong> <span class="currency">{{ r.payment.currency }}</span></td><td>{{ r.get_reason_display }}</td><td>{% if r.provider_reference %}<span class="payment-ref">{{ r.provider_reference }}</span>{% else %}<span class="quiet">Pending assignment</span>{% endif %}</td><td><span class="status-pill status-{{ r.status }}"><span></span>{{ r.get_status_display }}</span></td><td>{{ r.created_at|date:'d M Y, H:i' }}</td></tr>
+                {% empty %}<tr><td colspan="6"><div class="empty-state"><span>↶</span><strong>No refunds</strong><p>Great news — there are no refund requests to show.</p></div></td></tr>{% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

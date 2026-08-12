@@ -1,0 +1,66 @@
+# AmatoPay security endpoint configuration.
+#
+# Copy this file with the security app and adjust per project.
+# Prefix matching is used, so "/api/v1/checkout/" covers its detail/status routes.
+# endpoints below it.
+
+skip:
+  - /static/
+  - /staticfiles/
+  - /media/
+  - /favicon.
+  - /robots.txt
+  - /admin/jsi18n/
+  - /security/dashboard/
+  - /security/live-stats/
+
+circuit:
+  failure_threshold: 10
+  failure_window_seconds: 60
+  open_seconds: 60
+  half_open_seconds: 30
+  endpoints:
+    - /api/v1/checkout/
+    - /api/v1/payments/
+    - /api/v1/settlements/
+    - /pay/
+
+rate_limits:
+  default: 120
+  endpoints:
+    # Public portal pages
+    /: 240
+    /about/: 240
+    /contact/: 120
+    /account/sign-in/: 10
+    /dashboard/: 120
+
+    # API documentation
+    /api/schema/: 60
+    /api/docs/: 120
+    /api/docs/redoc/: 120
+
+    # Security console
+    /security/login/: 10
+    /security/overview/: 60
+    /security/block-ip/: 30
+    /security/unblock-ip/: 30
+    /security/alert/: 80
+    /security/alerts/resolve-all/: 20
+
+    # Merchant-facing payment API
+    /api/v1/checkout/: 60
+    /api/v1/merchants/: 80
+    /api/v1/payments/: 80
+    /api/v1/settlements/: 60
+
+    # Hosted payment pages
+    /pay/: 80
+
+    # Django admin
+    /admin/: 60
+
+block_durations:
+  default: 300
+  auth: 600
+  payment: 900

@@ -1,0 +1,14 @@
+Django>=5.2,<5.3
+djangorestframework>=3.16
+djangorestframework-simplejwt>=5.5
+drf-spectacular>=0.28
+drf-spectacular-sidecar>=2025.5
+django-filter>=25.1
+django-unfold==0.103.0
+psycopg[binary]>=3.2
+requests>=2.32
+Pillow>=11.0
+PyYAML>=6.0
+python-dotenv>=1.0
+cryptography>=45.0
+gunicorn>=23.0

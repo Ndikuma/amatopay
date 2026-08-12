@@ -1,0 +1,43 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Customer protection · AmatoPay</title>
+    <link rel="icon" href="{% static 'portal/favicon.svg' %}">
+    <link rel="stylesheet" href="{% static 'checkout/css/pay.css' %}">
+    <link rel="stylesheet" href="{% static 'checkout/css/delivery.css' %}">
+</head>
+<body>
+<main class="delivery-shell lookup-shell">
+    <section class="delivery-hero">
+        <a class="brand" href="/">AmatoPay</a>
+        <span class="secure-label">Customer protection</span>
+        <h1>Find protected payment</h1>
+        <p>Use payment reference from receipt or delivery link. Payer can confirm, request manual proof review, or report problem.</p>
+        <div class="proof-steps">
+            <div><b>✓</b><span><strong>Confirm receipt</strong><small>Six-digit delivery code releases funds.</small></span></div>
+            <div><b>◇</b><span><strong>Need another proof method</strong><small>Alias + document opens review.</small></span></div>
+            <div><b>!</b><span><strong>Delivery problem</strong><small>Funds stay frozen during investigation.</small></span></div>
+        </div>
+    </section>
+    <section class="checkout-card delivery-card">
+        <header>
+            <a class="brand" href="/">AmatoPay</a>
+            <h1>Enter payment reference</h1>
+            <p>Use reference from your receipt or merchant delivery link.</p>
+        </header>
+        <div class="notice"><strong>Four-business-day protection</strong><br>Confirm delivery or start review before the protection deadline shown on your payment.</div>
+        {% if error %}<div class="notice error">{{ error }}</div>{% endif %}
+        <form method="post">
+            {% csrf_token %}
+            <label for="payment_reference">Payment reference</label>
+            <input id="payment_reference" name="payment_reference" value="{{ payment_reference }}" placeholder="AMP-PAY-..." autocomplete="off" required>
+            <button type="submit">Continue securely</button>
+        </form>
+        <p class="security-note">You will still need delivery code or original payer alias. Never enter banking PIN, password, or OTP.</p>
+    </section>
+</main>
+</body>
+</html>

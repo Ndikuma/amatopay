@@ -1,0 +1,1121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Security Operations Center — AmatoPay</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:       #060910;
+      --surface:  #0d1117;
+      --card:     #111822;
+      --border:   #1e2a3a;
+      --border2:  #243044;
+      --red:      #ef4444;
+      --red-dim:  rgba(239,68,68,.12);
+      --yellow:   #f59e0b;
+      --yellow-dim:rgba(245,158,11,.12);
+      --green:    #10b981;
+      --green-dim:rgba(16,185,129,.12);
+      --blue:     #3b82f6;
+      --blue-dim: rgba(59,130,246,.12);
+      --purple:   #8b5cf6;
+      --text:     #e2e8f0;
+      --muted:    #64748b;
+      --muted2:   #94a3b8;
+      --font: 'Inter', system-ui, sans-serif;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 14px;
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    /* ── Topbar ─────────────────────────────────────────────── */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      height: 56px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .topbar-left { display: flex; align-items: center; gap: 12px; }
+    .shield-icon {
+      width: 30px; height: 30px;
+      background: var(--red);
+      border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .brand { font-weight: 700; font-size: 15px; letter-spacing: -.02em; }
+    .brand-sub { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .12em; }
+    .live-dot {
+      width: 8px; height: 8px;
+      background: var(--green);
+      border-radius: 50%;
+      animation: pulse 2s ease-in-out infinite;
+      margin-left: 8px;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(16,185,129,.4); }
+      50%       { opacity: .7; box-shadow: 0 0 0 6px rgba(16,185,129,0); }
+    }
+    .topbar-right { display: flex; align-items: center; gap: 16px; }
+    .ts { font-size: 12px; color: var(--muted); font-family: monospace; }
+    .topbar-right a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 12px;
+      padding: 5px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      transition: color .2s, border-color .2s;
+    }
+    .topbar-right a:hover { color: var(--text); border-color: var(--border2); }
+
+    /* ── Layout ─────────────────────────────────────────────── */
+    .container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+    .section-title {
+      font-size: 11px; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .1em;
+      margin-bottom: 14px;
+    }
+    .hero-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 360px;
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+    @media (max-width: 1000px) { .hero-grid { grid-template-columns: 1fr; } }
+    .hero-panel {
+      background:
+        radial-gradient(circle at 0 0, rgba(59,130,246,.16), transparent 28rem),
+        var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 22px;
+      overflow: hidden;
+      position: relative;
+    }
+    .hero-kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted2);
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+    }
+    .hero-kicker .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 6px rgba(16,185,129,.1); }
+    .hero-title {
+      margin-top: 12px;
+      max-width: 720px;
+      font-size: clamp(28px, 4vw, 44px);
+      line-height: 1.04;
+      letter-spacing: 0;
+      font-weight: 850;
+    }
+    .hero-copy {
+      margin-top: 12px;
+      max-width: 760px;
+      color: var(--muted2);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+    .coverage-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 18px;
+    }
+    @media (max-width: 820px) { .coverage-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 520px) { .coverage-grid { grid-template-columns: 1fr; } }
+    .coverage-card {
+      background: rgba(255,255,255,.035);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 13px;
+    }
+    .coverage-card strong { display: block; font-size: 13px; margin-bottom: 4px; }
+    .coverage-card span { color: var(--muted); font-size: 11px; line-height: 1.5; }
+    .risk-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+    }
+    .risk-meter {
+      height: 12px;
+      background: var(--border);
+      border-radius: 999px;
+      overflow: hidden;
+      margin: 16px 0 12px;
+    }
+    .risk-fill {
+      height: 100%;
+      width: {{ security_score }}%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--green), var(--blue));
+    }
+    .risk-level {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+    .risk-level.ok { color: var(--green); background: var(--green-dim); }
+    .risk-level.warn { color: var(--yellow); background: var(--yellow-dim); }
+    .risk-level.info { color: var(--blue); background: var(--blue-dim); }
+    .risk-level.danger { color: var(--red); background: var(--red-dim); }
+    .quick-links {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin: 0 0 18px;
+    }
+    @media (max-width: 760px) { .quick-links { grid-template-columns: 1fr; } }
+    .quick-link {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--muted2);
+      padding: 12px 14px;
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .quick-link:hover { color: var(--text); border-color: var(--border2); }
+
+    /* ── Stat cards ─────────────────────────────────────────── */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 14px;
+      margin-bottom: 28px;
+    }
+    .stat-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 20px;
+      position: relative;
+      overflow: hidden;
+    }
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 3px;
+      border-radius: 3px 0 0 3px;
+    }
+    .stat-card.danger::before  { background: var(--red); }
+    .stat-card.warn::before    { background: var(--yellow); }
+    .stat-card.ok::before      { background: var(--green); }
+    .stat-card.info::before    { background: var(--blue); }
+    .stat-card.purple::before  { background: var(--purple); }
+    .stat-label {
+      font-size: 11px; font-weight: 600; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .08em; margin-bottom: 10px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .stat-value {
+      font-size: 32px; font-weight: 800; letter-spacing: -.03em; line-height: 1;
+    }
+    .stat-card.danger .stat-value  { color: var(--red); }
+    .stat-card.warn   .stat-value  { color: var(--yellow); }
+    .stat-card.ok     .stat-value  { color: var(--green); }
+    .stat-card.info   .stat-value  { color: var(--blue); }
+    .stat-card.purple .stat-value  { color: var(--purple); }
+    .stat-sub { font-size: 11px; color: var(--muted); margin-top: 6px; }
+
+    /* ── Main grid ──────────────────────────────────────────── */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 18px;
+      margin-bottom: 28px;
+    }
+    @media (max-width: 1100px) { .main-grid { grid-template-columns: 1fr; } }
+
+    /* ── Panel ──────────────────────────────────────────────── */
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+    }
+    .panel-title { font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .badge-count {
+      font-size: 10px; font-weight: 700;
+      background: var(--red);
+      color: #fff;
+      border-radius: 99px;
+      padding: 1px 6px;
+      min-width: 18px;
+      text-align: center;
+    }
+    .badge-count.zero { background: var(--border2); color: var(--muted); }
+
+    /* ── Alerts table ───────────────────────────────────────── */
+    .alerts-table { width: 100%; border-collapse: collapse; }
+    .alerts-table th {
+      font-size: 10px; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .09em;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      white-space: nowrap;
+    }
+    .alerts-table td {
+      padding: 10px 14px;
+      border-bottom: 1px solid rgba(30,42,58,.5);
+      vertical-align: middle;
+      font-size: 13px;
+    }
+    .alerts-table tr:last-child td { border-bottom: none; }
+    .alerts-table tr:hover td { background: rgba(255,255,255,.02); }
+    .sev-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 9999px;
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      white-space: nowrap;
+    }
+    .sev-critical { background: rgba(220,38,38,.2);  color: #f87171; }
+    .sev-high     { background: var(--red-dim);      color: var(--red); }
+    .sev-medium   { background: var(--yellow-dim);   color: var(--yellow); }
+    .sev-low      { background: var(--green-dim);    color: var(--green); }
+    .sev-info     { background: rgba(99,102,241,.12);color: #818cf8; }
+    .ip-chip {
+      font-family: monospace;
+      font-size: 12px;
+      background: rgba(255,255,255,.05);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 2px 7px;
+      white-space: nowrap;
+    }
+    .type-label {
+      font-size: 11px; font-weight: 600; color: var(--muted2);
+      text-transform: uppercase; letter-spacing: .06em;
+    }
+    .path-cell {
+      font-family: monospace;
+      font-size: 11px;
+      color: var(--muted2);
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .time-cell { font-size: 11px; color: var(--muted); white-space: nowrap; }
+    .resolve-btn {
+      font-size: 11px; font-weight: 600;
+      background: var(--green-dim);
+      border: 1px solid rgba(16,185,129,.2);
+      border-radius: 6px;
+      color: var(--green);
+      cursor: pointer;
+      padding: 4px 10px;
+      white-space: nowrap;
+      transition: background .2s;
+    }
+    .resolve-btn:hover { background: rgba(16,185,129,.2); }
+    .empty-state {
+      padding: 40px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    /* ── Traffic feed ───────────────────────────────────────── */
+    .traffic-feed { max-height: 420px; overflow-y: auto; }
+    .traffic-feed::-webkit-scrollbar { width: 4px; }
+    .traffic-feed::-webkit-scrollbar-track { background: transparent; }
+    .traffic-feed::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+    .req-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 14px;
+      border-bottom: 1px solid rgba(30,42,58,.5);
+      font-size: 12px;
+    }
+    .req-row:last-child { border-bottom: none; }
+    .req-method {
+      font-family: monospace;
+      font-size: 10px;
+      font-weight: 700;
+      min-width: 34px;
+      text-align: center;
+    }
+    .method-GET    { color: var(--green); }
+    .method-POST   { color: var(--blue); }
+    .method-PUT, .method-PATCH  { color: var(--yellow); }
+    .method-DELETE { color: var(--red); }
+    .req-path {
+      flex: 1;
+      font-family: monospace;
+      font-size: 11px;
+      color: var(--muted2);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .req-ip { font-family: monospace; font-size: 11px; color: var(--muted); }
+    .status-chip {
+      font-family: monospace;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 4px;
+      min-width: 32px;
+      text-align: center;
+    }
+    .s2xx { background: var(--green-dim); color: var(--green); }
+    .s3xx { background: var(--blue-dim);  color: var(--blue); }
+    .s4xx { background: var(--yellow-dim);color: var(--yellow); }
+    .s5xx { background: var(--red-dim);   color: var(--red); }
+    .req-ms { font-size: 10px; color: var(--muted); min-width: 44px; text-align: right; }
+    .ms-slow { color: var(--yellow); }
+
+    /* ── Side panels ────────────────────────────────────────── */
+    .side-stack { display: flex; flex-direction: column; gap: 18px; }
+
+    /* ── Top IPs ────────────────────────────────────────────── */
+    .ip-list { padding: 8px 0; }
+    .ip-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 16px;
+    }
+    .ip-row:hover { background: rgba(255,255,255,.02); }
+    .ip-rank { font-size: 10px; color: var(--muted); min-width: 16px; }
+    .ip-addr { font-family: monospace; font-size: 12px; flex: 1; }
+    .ip-count { font-size: 11px; font-weight: 700; color: var(--muted2); }
+    .ip-bar-wrap { width: 60px; height: 4px; background: var(--border); border-radius: 2px; }
+    .ip-bar { height: 100%; background: var(--blue); border-radius: 2px; }
+    .block-btn-sm {
+      font-size: 10px; font-weight: 600;
+      background: transparent;
+      border: 1px solid rgba(239,68,68,.3);
+      border-radius: 5px;
+      color: var(--red);
+      cursor: pointer;
+      padding: 2px 7px;
+      transition: background .2s;
+    }
+    .block-btn-sm:hover { background: var(--red-dim); }
+
+    /* ── Blocked IPs panel ──────────────────────────────────── */
+    .blocked-list { padding: 8px 0; }
+    .blocked-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 16px;
+    }
+    .blocked-dot { width: 7px; height: 7px; background: var(--red); border-radius: 50%; flex-shrink: 0; }
+    .blocked-ip  { font-family: monospace; font-size: 12px; flex: 1; }
+    .unblock-btn {
+      font-size: 10px; font-weight: 600;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 2px 8px;
+      transition: color .2s, border-color .2s;
+    }
+    .unblock-btn:hover { color: var(--green); border-color: rgba(16,185,129,.3); }
+
+    /* ── Block IP form ──────────────────────────────────────── */
+    .block-form { padding: 16px; }
+    .block-form-row { display: flex; gap: 8px; }
+    .block-form input {
+      flex: 1;
+      background: rgba(255,255,255,.04);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 13px;
+      font-family: monospace;
+      padding: 8px 12px;
+      outline: none;
+      transition: border-color .2s;
+    }
+    .block-form input:focus { border-color: var(--red); }
+    .block-form button {
+      background: var(--red);
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 8px 14px;
+      white-space: nowrap;
+      transition: opacity .2s;
+    }
+    .block-form button:hover { opacity: .85; }
+
+    /* ── Sparkline chart ────────────────────────────────────── */
+    .chart-wrap { padding: 10px 16px 16px; }
+    .spark-svg { display: block; width: 100%; overflow: visible; }
+    .spark-line { fill: none; stroke: var(--blue); stroke-width: 2; }
+    .spark-area { fill: url(#spark-grad); opacity: .4; }
+
+    /* ── Alert breakdown ────────────────────────────────────── */
+    .breakdown-list { padding: 8px 0; }
+    .breakdown-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 7px 16px;
+    }
+    .breakdown-type { font-size: 11px; font-weight: 600; flex: 1; text-transform: capitalize; }
+    .breakdown-count { font-size: 12px; font-weight: 700; color: var(--muted2); }
+    .breakdown-bar-wrap { width: 70px; height: 4px; background: var(--border); border-radius: 2px; }
+    .breakdown-bar { height: 100%; background: var(--yellow); border-radius: 2px; }
+
+    /* ── Resolve-all button ─────────────────────────────────── */
+    .resolve-all-btn {
+      font-size: 11px; font-weight: 600;
+      background: var(--green-dim);
+      border: 1px solid rgba(16,185,129,.25);
+      border-radius: 7px;
+      color: var(--green);
+      cursor: pointer;
+      padding: 5px 12px;
+      transition: background .2s;
+    }
+    .resolve-all-btn:hover { background: rgba(16,185,129,.22); }
+
+    /* ── Toast ──────────────────────────────────────────────── */
+    .toast {
+      position: fixed;
+      bottom: 24px; right: 24px;
+      background: var(--card);
+      border: 1px solid var(--border2);
+      border-radius: 10px;
+      padding: 12px 18px;
+      font-size: 13px;
+      display: none;
+      align-items: center;
+      gap: 8px;
+      z-index: 9999;
+      box-shadow: 0 8px 24px rgba(0,0,0,.5);
+    }
+    .toast.show { display: flex; }
+    .toast.ok-toast { border-left: 3px solid var(--green); }
+    .toast.err-toast { border-left: 3px solid var(--red); }
+
+    /* ── Misc ───────────────────────────────────────────────── */
+    .scroll-table { overflow-x: auto; }
+    .no-results { padding: 28px 18px; text-align: center; color: var(--muted); font-size: 12px; }
+  </style>
+</head>
+<body>
+<!-- ── Topbar ──────────────────────────────────────────────────────────────── -->
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="shield-icon">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      </svg>
+    </div>
+    <div>
+      <div class="brand">Security Center</div>
+      <div class="brand-sub">AmatoPay — Threat, Traffic, Response</div>
+    </div>
+    <div class="live-dot" title="Live data"></div>
+  </div>
+  <div class="topbar-right">
+    <span class="ts" id="live-ts">{{ now|date:"Y-m-d H:i:s" }} UTC</span>
+    <a href="/security/overview/">Overview</a>
+    <a href="/security/logout/">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Sign out
+    </a>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- ── Security overview ───────────────────────────────────────────────── -->
+  <div class="hero-grid">
+    <section class="hero-panel">
+      <div class="hero-kicker"><span class="dot"></span> Middleware protection active</div>
+      <h1 class="hero-title">Security Center for AmatoPay traffic, threat signals, and operator response.</h1>
+      <p class="hero-copy">
+        This center watches request behavior, records API activity, surfaces attack patterns, protects sensitive endpoints, and gives staff a fast response path for blocking IPs and resolving alerts.
+      </p>
+      <div class="coverage-grid">
+        <div class="coverage-card">
+          <strong>Own database</strong>
+          <span>Security logs, alerts, and blocks are isolated in `security.sqlite3`.</span>
+        </div>
+        <div class="coverage-card">
+          <strong>Endpoint policy</strong>
+          <span>Skip, rate-limit, and circuit rules load from `security/endpoints.yaml`.</span>
+        </div>
+        <div class="coverage-card">
+          <strong>Threat detection</strong>
+          <span>Injection, scanning, suspicious clients, large payloads, and method abuse.</span>
+        </div>
+        <div class="coverage-card">
+          <strong>Response tools</strong>
+          <span>Block, unblock, resolve alerts, and monitor denied traffic from one place.</span>
+        </div>
+      </div>
+    </section>
+
+    <aside class="risk-card">
+      <div class="section-title">Current posture</div>
+      <span class="risk-level {{ risk_class }}">{{ risk_level }}</span>
+      <div class="risk-meter"><div class="risk-fill"></div></div>
+      <div style="display:flex;align-items:end;justify-content:space-between;gap:12px">
+        <div>
+          <div style="font-size:38px;font-weight:900;line-height:1">{{ security_score }}<span style="font-size:14px;color:var(--muted)">/100</span></div>
+          <div style="margin-top:5px;color:var(--muted);font-size:12px">Security readiness score</div>
+        </div>
+        <div style="text-align:right;color:var(--muted);font-size:11px;line-height:1.7">
+          <div>{{ critical_alerts }} critical</div>
+          <div>{{ blocked_ips }} blocked IPs</div>
+          <div>{{ avg_response_ms }}ms avg</div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <div class="quick-links">
+    <a class="quick-link" href="/security/overview/">Security Center guide <span>→</span></a>
+    <a class="quick-link" href="#blocked-list">Blocked IPs <span>{{ blocked_ips }}</span></a>
+    <a class="quick-link" href="/admin/security/">Django admin <span>→</span></a>
+  </div>
+
+  <!-- ── Stat cards ──────────────────────────────────────────────────────── -->
+  <div class="stat-grid" id="stats-grid">
+    <div class="stat-card {% if critical_alerts > 0 %}danger{% else %}ok{% endif %}">
+      <div class="stat-label">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Critical Alerts
+      </div>
+      <div class="stat-value" id="s-critical">{{ critical_alerts }}</div>
+      <div class="stat-sub">High + Critical, unresolved</div>
+    </div>
+    <div class="stat-card {% if total_alerts > 0 %}warn{% else %}ok{% endif %}">
+      <div class="stat-label">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        Open Alerts
+      </div>
+      <div class="stat-value" id="s-alerts">{{ total_alerts }}</div>
+      <div class="stat-sub">All unresolved</div>
+    </div>
+    <div class="stat-card info">
+      <div class="stat-label">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
+        Requests (24h)
+      </div>
+      <div class="stat-value" id="s-reqs">{{ total_requests }}</div>
+      <div class="stat-sub">{{ api_requests }} API calls</div>
+    </div>
+    <div class="stat-card info">
+      <div class="stat-label">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>
+        Unique IPs
+      </div>
+      <div class="stat-value">{{ unique_ips }}</div>
+      <div class="stat-sub">Distinct visitors in 24h</div>
+    </div>
+    <div class="stat-card {% if errors_5xx > 0 %}danger{% else %}ok{% endif %}">
+      <div class="stat-label">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Server Errors
+      </div>
+      <div class="stat-value" id="s-5xx">{{ errors_5xx }}</div>
+      <div class="stat-sub">5xx in last 24h</div>
+    </div>
+    <div class="stat-card {% if errors_4xx > 50 %}warn{% else %}ok{% endif %}">
+      <div class="stat-label">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        Client Errors
+      </div>
+      <div class="stat-value">{{ errors_4xx }}</div>
+      <div class="stat-sub">4xx in last 24h</div>
+    </div>
+    <div class="stat-card {% if blocked_ips > 0 %}danger{% else %}ok{% endif %}">
+      <div class="stat-label">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        Blocked IPs
+      </div>
+      <div class="stat-value" id="s-blocked">{{ blocked_ips }}</div>
+      <div class="stat-sub">Active blocks</div>
+    </div>
+    <div class="stat-card {% if blocked_requests > 0 %}warn{% else %}ok{% endif %}">
+      <div class="stat-label">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+        Denied Traffic
+      </div>
+      <div class="stat-value">{{ blocked_requests }}</div>
+      <div class="stat-sub">403 + 429 responses</div>
+    </div>
+    <div class="stat-card purple">
+      <div class="stat-label">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Avg Response
+      </div>
+      <div class="stat-value">{{ avg_response_ms }}<span style="font-size:14px;font-weight:400;color:var(--muted)">ms</span></div>
+      <div class="stat-sub">Last 24 hours</div>
+    </div>
+    <div class="stat-card {% if slow_requests > 0 %}warn{% else %}ok{% endif %}">
+      <div class="stat-label">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Slow Requests
+      </div>
+      <div class="stat-value">{{ slow_requests }}</div>
+      <div class="stat-sub">&gt; 2000ms response time</div>
+    </div>
+    <div class="stat-card {% if rate_limited_ips > 0 %}warn{% else %}ok{% endif %}">
+      <div class="stat-label">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>
+        Temporary Blocks
+      </div>
+      <div class="stat-value">{{ rate_limited_ips }}</div>
+      <div class="stat-sub">Active blocks with expiry</div>
+    </div>
+  </div>
+
+  <!-- ── Sparkline ──────────────────────────────────────────────────────── -->
+  <div class="panel" style="margin-bottom:18px">
+    <div class="panel-header">
+      <div class="panel-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Traffic Volume (last 24 hours)
+      </div>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="spark-canvas" height="60" style="width:100%;display:block"></canvas>
+    </div>
+  </div>
+
+  <!-- ── Main grid ──────────────────────────────────────────────────────── -->
+  <div class="main-grid">
+
+    <!-- Alerts + Traffic (left column) -->
+    <div style="display:flex;flex-direction:column;gap:18px">
+
+      <!-- Active alerts -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+            Active Alerts
+            <span class="badge-count {% if total_alerts == 0 %}zero{% endif %}">{{ total_alerts }}</span>
+          </div>
+          {% if total_alerts > 0 %}
+          <button class="resolve-all-btn" onclick="resolveAll()">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:middle;margin-right:3px"><path d="M20 6 9 17l-5-5"/></svg>
+            Resolve all
+          </button>
+          {% endif %}
+        </div>
+        <div class="scroll-table">
+          {% if active_alerts %}
+          <table class="alerts-table">
+            <thead>
+              <tr>
+                <th>Severity</th>
+                <th>Type</th>
+                <th>IP</th>
+                <th>Path</th>
+                <th>Time</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="alerts-body">
+              {% for alert in active_alerts %}
+              <tr id="alert-row-{{ alert.id }}">
+                <td><span class="sev-badge sev-{{ alert.severity }}">{{ alert.severity }}</span></td>
+                <td><span class="type-label">{{ alert.get_alert_type_display }}</span></td>
+                <td>
+                  <span class="ip-chip">{{ alert.ip_address }}</span>
+                  <button class="block-btn-sm" onclick="quickBlock('{{ alert.ip_address }}')" style="margin-left:4px" title="Block this IP">
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  </button>
+                </td>
+                <td><div class="path-cell" title="{{ alert.path }}">{{ alert.path }}</div></td>
+                <td><span class="time-cell">{{ alert.timestamp|timesince }} ago</span></td>
+                <td>
+                  <button class="resolve-btn" onclick="resolveAlert({{ alert.id }})">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:middle;margin-right:3px"><path d="M20 6 9 17l-5-5"/></svg>
+                    Resolve
+                  </button>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% else %}
+          <div class="empty-state">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--green);margin-bottom:8px"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            <div>No active alerts — all clear</div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Recent traffic -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
+            Recent Traffic
+          </div>
+          <span style="font-size:11px;color:var(--muted)">Last 100 requests · 24h window</span>
+        </div>
+        <div class="traffic-feed">
+          {% for req in recent_requests %}
+          <div class="req-row">
+            <span class="req-method method-{{ req.method }}">{{ req.method }}</span>
+            <span class="req-path" title="{{ req.path }}{% if req.query_string %}?{{ req.query_string }}{% endif %}">
+              {{ req.path }}{% if req.query_string %}<span style="color:var(--muted)">?{{ req.query_string|truncatechars:40 }}</span>{% endif %}
+            </span>
+            <span class="ip-chip">{{ req.ip_address }}</span>
+            <span class="status-chip
+              {% if req.status_code < 300 %}s2xx
+              {% elif req.status_code < 400 %}s3xx
+              {% elif req.status_code < 500 %}s4xx
+              {% else %}s5xx{% endif %}">
+              {{ req.status_code }}
+            </span>
+            <span class="req-ms {% if req.is_slow %}ms-slow{% endif %}">{{ req.response_ms }}ms</span>
+          </div>
+          {% empty %}
+          <div class="no-results">No traffic recorded yet.</div>
+          {% endfor %}
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right column -->
+    <div class="side-stack">
+
+      <!-- Block IP form -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            Block IP Address
+          </div>
+        </div>
+        <form class="block-form" id="block-ip-form" onsubmit="blockIP(event)">
+          {% csrf_token %}
+          <div class="block-form-row">
+            <input type="text" id="block-ip-input" placeholder="x.x.x.x" pattern="^(\d{1,3}\.){3}\d{1,3}$" required>
+            <button type="submit">Block</button>
+          </div>
+          <div style="margin-top:8px">
+            <input type="text" id="block-reason-input" placeholder="Reason (optional)" style="font-family:inherit">
+          </div>
+        </form>
+      </div>
+
+      <!-- Top IPs -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            Top IPs (24h)
+          </div>
+        </div>
+        <div class="ip-list">
+          {% with max_count=top_ips.0.count|default:1 %}
+          {% for ip_row in top_ips %}
+          <div class="ip-row">
+            <span class="ip-rank">#{{ forloop.counter }}</span>
+            <span class="ip-addr">{{ ip_row.ip_address }}</span>
+            <div class="ip-bar-wrap">
+              <div class="ip-bar" style="width:{% widthratio ip_row.count max_count 100 %}%"></div>
+            </div>
+            <span class="ip-count">{{ ip_row.count }}</span>
+            <button class="block-btn-sm" onclick="quickBlock('{{ ip_row.ip_address }}')" title="Block IP">
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </button>
+          </div>
+          {% empty %}
+          <div class="no-results">No data yet.</div>
+          {% endfor %}
+          {% endwith %}
+        </div>
+      </div>
+
+      <!-- Alert breakdown -->
+      {% if alert_breakdown %}
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            Alert Types (7 days)
+          </div>
+        </div>
+        <div class="breakdown-list">
+          {% with max_b=alert_breakdown.0.count|default:1 %}
+          {% for row in alert_breakdown %}
+          <div class="breakdown-row">
+            <span class="breakdown-type">{{ row.alert_type|cut:"_" }}</span>
+            <div class="breakdown-bar-wrap">
+              <div class="breakdown-bar" style="width:{% widthratio row.count max_b 100 %}%"></div>
+            </div>
+            <span class="breakdown-count">{{ row.count }}</span>
+          </div>
+          {% endfor %}
+          {% endwith %}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Blocked IPs -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+            <span style="color:var(--red)">Blocked IPs</span>
+            <span class="badge-count {% if blocked_ips == 0 %}zero{% endif %}">{{ blocked_ips }}</span>
+          </div>
+        </div>
+        <div class="blocked-list" id="blocked-list">
+          {% for blk in blocked_list %}
+          <div class="blocked-row" id="blk-{{ blk.ip_address|slugify }}">
+            <div class="blocked-dot"></div>
+            <span class="blocked-ip">{{ blk.ip_address }}</span>
+            <span style="font-size:10px;color:var(--muted);flex:1">{{ blk.reason|truncatechars:20 }}</span>
+            <button class="unblock-btn" onclick="unblockIP('{{ blk.ip_address }}')">Unblock</button>
+          </div>
+          {% empty %}
+          <div class="no-results">No blocked IPs.</div>
+          {% endfor %}
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- Toast notification -->
+<div class="toast" id="toast"></div>
+
+<!-- ── Scripts ──────────────────────────────────────────────────────────────── -->
+<script>
+const HOURLY = {{ hourly_json|safe }};
+const CSRF   = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+// ── Sparkline ──────────────────────────────────────────────────────────────
+(function() {
+  const canvas = document.getElementById('spark-canvas');
+  if (!canvas || !HOURLY.length) return;
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width  = canvas.offsetWidth  * dpr;
+  canvas.height = canvas.offsetHeight * dpr;
+  ctx.scale(dpr, dpr);
+
+  const W = canvas.offsetWidth, H = canvas.offsetHeight;
+  const pad = { top: 8, bottom: 20, left: 0, right: 0 };
+  const data = HOURLY.map(h => h.count);
+  const maxV = Math.max(...data, 1);
+  const n = data.length;
+  if (!n) return;
+
+  const xStep = (W - pad.left - pad.right) / Math.max(n - 1, 1);
+  const pts = data.map((v, i) => ({
+    x: pad.left + i * xStep,
+    y: pad.top + (1 - v / maxV) * (H - pad.top - pad.bottom),
+  }));
+
+  // Area fill
+  const grad = ctx.createLinearGradient(0, pad.top, 0, H);
+  grad.addColorStop(0, 'rgba(59,130,246,.35)');
+  grad.addColorStop(1, 'rgba(59,130,246,0)');
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, H - pad.bottom);
+  pts.forEach(p => ctx.lineTo(p.x, p.y));
+  ctx.lineTo(pts[pts.length - 1].x, H - pad.bottom);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Line
+  ctx.beginPath();
+  pts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+  ctx.strokeStyle = '#3b82f6';
+  ctx.lineWidth = 2;
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+
+  // Dots
+  pts.forEach(p => {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+    ctx.fillStyle = '#3b82f6';
+    ctx.fill();
+  });
+
+  // Labels (every 4h)
+  ctx.fillStyle = 'rgba(100,116,139,.7)';
+  ctx.font = `${10 * dpr / dpr}px monospace`;
+  ctx.textAlign = 'center';
+  HOURLY.forEach((h, i) => {
+    if (i % 4 !== 0) return;
+    const label = h.hour.slice(11, 16);
+    ctx.fillText(label, pts[i].x, H - 2);
+  });
+})();
+
+// ── Toast ──────────────────────────────────────────────────────────────────
+function showToast(msg, ok = true) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + (ok ? 'ok-toast' : 'err-toast');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.className = 'toast', 3000);
+}
+
+// ── Block IP ───────────────────────────────────────────────────────────────
+function blockIP(e) {
+  e.preventDefault();
+  const ip     = document.getElementById('block-ip-input').value.trim();
+  const reason = document.getElementById('block-reason-input').value.trim() || 'Manual block';
+  const body   = new URLSearchParams({ ip_address: ip, reason, csrfmiddlewaretoken: CSRF });
+  fetch('/security/block-ip/', { method: 'POST', body })
+    .then(r => r.json())
+    .then(d => {
+      if (d.ok) {
+        showToast(`${ip} blocked.`);
+        document.getElementById('block-ip-input').value = '';
+        document.getElementById('block-reason-input').value = '';
+        addBlockedRow(ip, reason);
+      } else {
+        showToast(d.error || 'Error', false);
+      }
+    })
+    .catch(() => showToast('Request failed', false));
+}
+
+function quickBlock(ip) {
+  if (!confirm(`Block ${ip}?`)) return;
+  const body = new URLSearchParams({ ip_address: ip, reason: 'Quick block from dashboard', csrfmiddlewaretoken: CSRF });
+  fetch('/security/block-ip/', { method: 'POST', body })
+    .then(r => r.json())
+    .then(d => { if (d.ok) { showToast(`${ip} blocked.`); addBlockedRow(ip, 'Quick block'); } });
+}
+
+function addBlockedRow(ip, reason) {
+  const list = document.getElementById('blocked-list');
+  const slug = ip.replace(/\./g, '-');
+  if (document.getElementById('blk-' + slug)) return;
+  const div = document.createElement('div');
+  div.className = 'blocked-row';
+  div.id = 'blk-' + slug;
+  div.innerHTML = `<div class="blocked-dot"></div>
+    <span class="blocked-ip">${ip}</span>
+    <span style="font-size:10px;color:var(--muted);flex:1">${reason.slice(0,20)}</span>
+    <button class="unblock-btn" onclick="unblockIP('${ip}')">Unblock</button>`;
+  list.prepend(div);
+}
+
+// ── Unblock IP ─────────────────────────────────────────────────────────────
+function unblockIP(ip) {
+  if (!confirm(`Unblock ${ip}?`)) return;
+  const body = new URLSearchParams({ csrfmiddlewaretoken: CSRF });
+  fetch(`/security/unblock-ip/${ip}/`, { method: 'POST', body })
+    .then(r => r.json())
+    .then(d => {
+      if (d.ok) {
+        showToast(`${ip} unblocked.`);
+        const slug = ip.replace(/\./g, '-');
+        const el = document.getElementById('blk-' + slug);
+        if (el) el.remove();
+      }
+    });
+}
+
+// ── Resolve alert ──────────────────────────────────────────────────────────
+function resolveAlert(id) {
+  const body = new URLSearchParams({ csrfmiddlewaretoken: CSRF });
+  fetch(`/security/alert/${id}/resolve/`, { method: 'POST', body })
+    .then(r => r.json())
+    .then(d => {
+      if (d.ok) {
+        const row = document.getElementById('alert-row-' + id);
+        if (row) { row.style.opacity = '.3'; setTimeout(() => row.remove(), 400); }
+        showToast('Alert resolved.');
+      }
+    });
+}
+
+function resolveAll() {
+  if (!confirm('Resolve all open alerts?')) return;
+  const body = new URLSearchParams({ csrfmiddlewaretoken: CSRF });
+  fetch('/security/alerts/resolve-all/', { method: 'POST', body })
+    .then(r => r.json())
+    .then(d => {
+      if (d.ok) {
+        document.querySelectorAll('#alerts-body tr').forEach(r => r.remove());
+        showToast(`${d.resolved} alerts resolved.`);
+        document.getElementById('s-alerts').textContent = '0';
+        document.getElementById('s-critical').textContent = '0';
+      }
+    });
+}
+
+// ── Live stats polling (every 30s) ─────────────────────────────────────────
+function refreshStats() {
+  fetch('/security/live-stats/')
+    .then(r => r.json())
+    .then(d => {
+      document.getElementById('s-critical').textContent = d.critical_alerts;
+      document.getElementById('s-alerts').textContent   = d.total_alerts;
+      document.getElementById('s-reqs').textContent     = d.total_requests;
+      document.getElementById('s-5xx').textContent      = d.errors_5xx;
+      document.getElementById('s-blocked').textContent  = d.blocked_ips;
+      // Update clock
+      document.getElementById('live-ts').textContent    = d.timestamp.slice(0, 19).replace('T', ' ') + ' UTC';
+    })
+    .catch(() => {});
+}
+setInterval(refreshStats, 30000);
+</script>
+</body>
+</html>

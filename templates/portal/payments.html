@@ -1,0 +1,81 @@
+{% extends 'portal/base.html' %}
+{% block title %}Payments · AmatoPay{% endblock %}
+{% block content %}
+    <header class="page-header">
+        <div>
+            <p class="eyebrow">Transactions</p>
+            <h1>Payments</h1>
+            <p class="page-subtitle">Track every AmatoPay transaction for {{ merchant.display_name }}.</p>
+        </div>
+        <div class="header-actions">
+            <button class="button button-secondary"
+                    type="button"
+                    onclick="window.print()">Export view</button>
+        </div>
+    </header>
+    <section class="panel">
+        <div class="panel-head toolbar">
+            <div>
+                <h2>All payments</h2>
+                <p>{{ payments|length }} most recent transactions</p>
+            </div>
+            <div class="table-tools">
+                <div class="filter-chips" aria-label="Filter payments">
+                    <button class="tw-filter-chip is-active"
+                            type="button"
+                            data-status-filter="all">All</button><button class="tw-filter-chip" type="button" data-status-filter="paid">Successful</button><button class="tw-filter-chip" type="button" data-status-filter="processing">Processing</button><button class="tw-filter-chip" type="button" data-status-filter="failed">Failed</button>
+                </div>
+                <label class="search-field">
+                    <span aria-hidden="true">⌕</span><span class="sr-only">Search payments</span><input type="search" placeholder="Search payments" data-table-search>
+                </label>
+            </div>
+        </div>
+        <div class="table-scroll">
+            <table class="data-table" data-search-table>
+                <thead>
+                    <tr>
+                        <th>Payment</th>
+                        <th>Payer alias</th>
+                        <th>Order</th>
+                        <th>Amount</th>
+                        <th>AmatoPay fee</th>
+                        <th>Merchant net</th>
+                        <th>Status</th>
+                        <th>Paid at</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in payments %}
+                        <tr data-payment-status="{{ p.status }}">
+                            <td>
+                                <a class="copy-reference"
+                                        href="{% url 'portal:payment-detail' p.reference %}"
+                                        title="View payment details"><span class="payment-ref">{{ p.reference }}</span><span aria-hidden="true">→</span></a>
+                            </td>
+                            <td>{% if p.payer_alias %}<strong>{{ p.masked_payer_alias }}</strong><br><span class="quiet">{{ p.payer_alias_type|title }}{% if p.payer_display_name %} · {{ p.payer_display_name }}{% endif %}</span>{% else %}<span class="quiet">Not available</span>{% endif %}</td>
+                            <td>{{ p.session.order_number }}</td>
+                            <td><strong>{{ p.total_amount|floatformat:0 }}</strong> <span class="currency">{{ p.currency }}</span></td>
+                            <td>{{ p.fee_amount|floatformat:0 }} <span class="currency">{{ p.currency }}</span><br><span class="quiet">{{ p.fee_percentage|floatformat:2 }}%</span></td>
+                            <td><strong>{{ p.net_amount|floatformat:0 }}</strong> <span class="currency">{{ p.currency }}</span></td>
+                            <td><span class="status-pill status-{{ p.status }}"><span></span>{{ p.get_status_display }}</span></td>
+                            <td>{% if p.paid_at %}<time datetime="{{ p.paid_at|date:'c' }}">{{ p.paid_at|date:'d M Y, H:i' }}</time>{% else %}<span class="quiet">Not paid</span>{% endif %}</td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="8">
+                                <div class="empty-state">
+                                    <span>↔</span><strong>No payments found</strong>
+                                    <p>Transactions will appear here when customers pay.</p>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <div class="filtered-empty" data-filtered-empty hidden>
+                <span>⌕</span><strong>No matching payments</strong>
+                <p>Try a different search or status filter.</p>
+            </div>
+        </div>
+    </section>
+{% endblock %}

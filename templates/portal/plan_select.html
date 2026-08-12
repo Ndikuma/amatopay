@@ -1,0 +1,364 @@
+{% extends 'portal/base.html' %}
+{% load humanize %}
+{% block title %}Choose a plan · AmatoPay{% endblock %}
+
+{% block content %}
+<header class="page-header">
+    <div>
+        <p class="eyebrow"><a href="{% url 'portal:billing' %}" style="color:var(--teal-600);">Billing &amp; plan</a> / Choose a plan</p>
+        <h1>Choose a plan</h1>
+        <p class="page-subtitle">Plans are assigned by AmatoPay. Select one below and submit a request — our team will review within 1 business day.</p>
+    </div>
+</header>
+
+{% if pricing.mode == 'plan' %}
+<div class="trust-notice" style="margin-bottom:24px;">
+    <div class="trust-notice-icon">◈</div>
+    <div>
+        <strong>Current plan: {{ pricing.name }}</strong>
+        <p>
+            You are on the <strong>{{ pricing.name }}</strong> plan
+            ({{ pricing.used }} / {% if pricing.limit %}{{ pricing.limit }}{% else %}∞{% endif %} transactions used this month).
+            Requesting a new plan will not cancel your current plan until AmatoPay confirms the change.
+        </p>
+    </div>
+</div>
+{% else %}
+<div class="trust-notice" style="margin-bottom:24px;border-color:#f0d5a7;background:#fff9ee;">
+    <div class="trust-notice-icon" style="background:#fbe8c3;color:#9e660d;">↔</div>
+    <div>
+        <strong>Currently on Pay-as-you-go</strong>
+        <p>You are not on a contracted plan. Requesting a plan below will start the assignment process.</p>
+    </div>
+</div>
+{% endif %}
+
+<style>
+    .ps-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+        gap: 16px;
+        margin-bottom: 32px;
+    }
+    .ps-card {
+        position: relative;
+        display: flex; flex-direction: column;
+        background: var(--surface);
+        border: 1.5px solid var(--line);
+        border-radius: var(--radius);
+        padding: 24px 22px 20px;
+        transition: box-shadow .2s, transform .2s;
+    }
+    .ps-card:hover { box-shadow: var(--shadow); transform: translateY(-1px); }
+    .ps-card.is-current {
+        border-color: var(--teal-500);
+        box-shadow: 0 0 0 3px rgba(13,148,136,.1);
+    }
+    .ps-card.is-popular {
+        border-color: var(--teal-600);
+    }
+    .ps-badge {
+        position: absolute; top: -12px; left: 20px;
+        padding: 3px 12px; border-radius: 999px;
+        font-size: 9px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase;
+        white-space: nowrap;
+    }
+    .ps-badge.current { background: var(--teal-500); color: #fff; }
+    .ps-badge.popular { background: var(--navy-900); color: #fff; }
+
+    .ps-icon {
+        display: grid; width: 38px; height: 38px; place-items: center;
+        border-radius: 10px; background: #edf9f7; color: var(--teal-600);
+        font-size: 17px; font-weight: 900; margin-bottom: 12px;
+    }
+    .ps-card h3 { margin: 0 0 3px; font-size: 16px; font-weight: 800; letter-spacing: -.02em; }
+    .ps-card .ps-desc { margin: 0 0 16px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+
+    .ps-price { display: flex; align-items: baseline; gap: 4px; margin-bottom: 4px; }
+    .ps-price strong { font-size: 22px; font-weight: 900; letter-spacing: -.04em; color: var(--ink); }
+    .ps-price span { color: var(--muted); font-size: 11px; }
+    .ps-txn { color: var(--teal-600); font-size: 11px; font-weight: 750; margin-bottom: 16px; }
+
+    .ps-features { list-style: none; margin: 0 0 20px; padding: 0; flex: 1; }
+    .ps-features li {
+        display: flex; align-items: flex-start; gap: 8px;
+        padding: 5px 0; border-bottom: 1px solid #f0f4f4;
+        font-size: 11px; color: #3a5560;
+    }
+    .ps-features li:last-child { border-bottom: 0; }
+    .ps-features .ck {
+        flex: 0 0 15px; width: 15px; height: 15px;
+        display: grid; place-items: center;
+        border-radius: 50%; background: #e0f7f3; color: var(--teal-600);
+        font-size: 7px; font-weight: 900; margin-top: 1px;
+    }
+
+    .ps-ext {
+        display: flex; align-items: center; gap: 8px;
+        padding: 8px 10px; border-radius: 8px;
+        background: #f5fffe; border: 1px solid #c8ede9;
+        margin-bottom: 14px; font-size: 10px;
+    }
+    .ps-ext strong { display: block; color: var(--navy-900); font-size: 10px; }
+    .ps-ext span { color: var(--muted); }
+
+    .ps-btn {
+        display: block; width: 100%; padding: 11px;
+        border: 1.5px solid var(--navy-900); border-radius: 9px;
+        background: transparent; color: var(--navy-900);
+        font-size: 12px; font-weight: 750; text-align: center;
+        cursor: pointer; transition: background .15s, color .15s;
+    }
+    .ps-btn:hover { background: var(--navy-900); color: #fff; }
+    .ps-btn.current-btn {
+        border-color: var(--teal-500); color: var(--teal-600);
+        background: #edf9f7; cursor: default;
+    }
+    .ps-btn.popular-btn { background: var(--teal-600); border-color: var(--teal-600); color: #fff; }
+    .ps-btn.popular-btn:hover { opacity: .9; }
+
+    .ps-payg {
+        grid-column: 1 / -1;
+        display: grid; grid-template-columns: 1fr 1fr auto;
+        align-items: center; gap: 24px;
+        background: var(--navy-950, #061923); color: #fff;
+        border-color: transparent;
+    }
+    .ps-payg:hover { transform: none; }
+    .ps-payg h3 { color: #fff; }
+    .ps-payg .ps-desc { color: rgba(255,255,255,.5); }
+    .ps-payg .ps-price strong { color: #fff; }
+    .ps-payg .ps-txn { color: var(--teal-100, #ccfbf1); }
+    .ps-payg .ps-features li { color: rgba(255,255,255,.65); border-color: rgba(255,255,255,.07); }
+    .ps-payg .ps-features .ck { background: rgba(94,234,212,.15); color: #5eead4; }
+    .ps-payg .ps-btn { border-color: rgba(255,255,255,.25); color: rgba(255,255,255,.8); }
+    .ps-payg .ps-btn:hover { background: rgba(255,255,255,.1); color: #fff; }
+
+    /* Request modal */
+    .ps-modal-overlay {
+        display: none; position: fixed; inset: 0; z-index: 50;
+        background: rgba(6,25,35,.55); backdrop-filter: blur(3px);
+        align-items: center; justify-content: center;
+    }
+    .ps-modal-overlay.open { display: flex; }
+    .ps-modal {
+        background: #fff; border-radius: 16px;
+        width: min(480px, calc(100vw - 32px));
+        box-shadow: 0 32px 80px rgba(6,25,35,.2);
+        overflow: hidden;
+    }
+    .ps-modal-head {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 20px 24px; border-bottom: 1px solid var(--line);
+    }
+    .ps-modal-head h2 { margin: 0; font-size: 16px; letter-spacing: -.02em; }
+    .ps-modal-close {
+        width: 30px; height: 30px; border: 0; border-radius: 8px;
+        background: #f0f4f4; color: var(--muted); cursor: pointer;
+        font-size: 16px; display: grid; place-items: center;
+    }
+    .ps-modal-body { padding: 24px; }
+    .ps-modal-body p { margin: 0 0 16px; color: var(--muted); font-size: 13px; }
+    .ps-modal-plan-summary {
+        display: flex; align-items: center; gap: 12px;
+        padding: 14px; border-radius: 10px;
+        background: #f4f9f8; border: 1px solid #c8e8e3;
+        margin-bottom: 20px;
+    }
+    .ps-modal-plan-summary .icon {
+        display: grid; width: 36px; height: 36px; place-items: center;
+        border-radius: 9px; background: #e0f7f3; color: var(--teal-600);
+        font-size: 16px; font-weight: 900;
+    }
+    .ps-modal-plan-summary strong { display: block; font-size: 14px; }
+    .ps-modal-plan-summary span { color: var(--muted); font-size: 11px; }
+    .ps-modal-body label { display: block; margin-bottom: 6px; font-size: 11px; font-weight: 750; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+    .ps-modal-body textarea {
+        width: 100%; padding: 11px 12px;
+        border: 1px solid var(--line); border-radius: 9px;
+        outline: 0; resize: vertical; min-height: 90px;
+        font: 13px/1.5 inherit; color: var(--ink);
+    }
+    .ps-modal-body textarea:focus { border-color: var(--teal-500); box-shadow: 0 0 0 3px rgba(13,148,136,.1); }
+    .ps-modal-foot {
+        display: flex; gap: 10px; justify-content: flex-end;
+        padding: 16px 24px; border-top: 1px solid var(--line);
+        background: #fafcfc;
+    }
+    .ps-modal-foot .btn-cancel {
+        padding: 10px 18px; border: 1px solid var(--line); border-radius: 8px;
+        background: #fff; color: var(--muted); font-size: 12px; font-weight: 700; cursor: pointer;
+    }
+    .ps-modal-foot .btn-submit {
+        padding: 10px 20px; border: 0; border-radius: 8px;
+        background: var(--teal-600); color: #fff;
+        font-size: 12px; font-weight: 750; cursor: pointer;
+        transition: opacity .15s;
+    }
+    .ps-modal-foot .btn-submit:hover { opacity: .9; }
+
+    @media (max-width: 760px) {
+        .ps-payg { grid-template-columns: 1fr; }
+    }
+</style>
+
+<div class="ps-grid">
+    {% for plan in plans %}
+    {% if plan.code != "pay-as-you-go" %}
+    <div class="ps-card {% if pricing.plan_code == plan.code %}is-current{% elif plan.code == 'business' %}is-popular{% endif %}">
+        {% if pricing.plan_code == plan.code %}
+            <div class="ps-badge current">Current plan</div>
+        {% elif plan.code == 'business' %}
+            <div class="ps-badge popular">Most popular</div>
+        {% endif %}
+
+        <div class="ps-icon">
+            {% if plan.code == 'starter' %}◇
+            {% elif plan.code == 'standard' %}◈
+            {% elif plan.code == 'business' %}⬡
+            {% elif plan.code == 'business-plus' %}⬢
+            {% elif plan.code == 'premium' %}✦
+            {% elif plan.code == 'enterprise' %}⬟
+            {% elif plan.code == 'unlimited' %}∞
+            {% else %}◈{% endif %}
+        </div>
+        <h3>{{ plan.name }}</h3>
+        <p class="ps-desc">{{ plan.description }}</p>
+
+        <div class="ps-price">
+            {% if plan.monthly_price is not None %}
+                <strong>{{ plan.monthly_price|floatformat:0|intcomma }}</strong>
+                <span>{{ plan.currency }} / mo</span>
+            {% else %}
+                <strong>Custom</strong>
+            {% endif %}
+        </div>
+        <p class="ps-txn">
+            {% if plan.included_transactions_per_month %}
+                {{ plan.included_transactions_per_month|intcomma }} transactions · 0% fee
+            {% else %}
+                Unlimited transactions · 0% fee
+            {% endif %}
+        </p>
+
+        {% if plan.extension_price and plan.extension_transactions %}
+        <div class="ps-ext">
+            <span style="color:var(--teal-600);font-size:14px;">＋</span>
+            <div>
+                <strong>+{{ plan.extension_transactions|intcomma }} extension pack</strong>
+                <span>{{ plan.extension_price|floatformat:0|intcomma }} {{ plan.currency }}</span>
+            </div>
+        </div>
+        {% endif %}
+
+        <ul class="ps-features">
+            {% for feature in plan.features %}
+            <li><span class="ck">✓</span>{{ feature }}</li>
+            {% endfor %}
+        </ul>
+
+        {% if pricing.plan_code == plan.code %}
+            <button class="ps-btn current-btn" disabled>✓ Active plan</button>
+        {% else %}
+            <button class="ps-btn {% if plan.code == 'business' %}popular-btn{% endif %}"
+                    onclick="openPlanRequest('{{ plan.name }}', '{{ plan.monthly_price|default:'Custom' }} {{ plan.currency }}/mo', '{{ plan.code }}')">
+                Request this plan
+            </button>
+        {% endif %}
+    </div>
+    {% endif %}
+    {% endfor %}
+
+    {% for plan in plans %}
+    {% if plan.code == "pay-as-you-go" %}
+    <div class="ps-card ps-payg {% if pricing.mode == 'payg' %}is-current{% endif %}">
+        {% if pricing.mode == 'payg' %}<div class="ps-badge current" style="left:auto;right:20px;">Current</div>{% endif %}
+        <div>
+            <h3>{{ plan.name }}</h3>
+            <p class="ps-desc">{{ plan.description }}</p>
+            <div class="ps-price">
+                <strong>{{ plan.transaction_fee_percentage|floatformat:2 }}%</strong>
+                <span>per transaction</span>
+            </div>
+            <p class="ps-txn">No monthly commitment · No allowance</p>
+        </div>
+        <ul class="ps-features">
+            {% for feature in plan.features %}
+            <li><span class="ck">✓</span>{{ feature }}</li>
+            {% endfor %}
+        </ul>
+        {% if pricing.mode == 'payg' %}
+            <button class="ps-btn current-btn" disabled>✓ Active</button>
+        {% else %}
+            <button class="ps-btn"
+                    onclick="openPlanRequest('{{ plan.name }}', '{{ plan.transaction_fee_percentage|floatformat:2 }}% per transaction', '{{ plan.code }}')">
+                Switch to Pay-as-you-go
+            </button>
+        {% endif %}
+    </div>
+    {% endif %}
+    {% endfor %}
+</div>
+
+<p class="regulatory-footnote">
+    Plan changes are contractual and require AmatoPay approval.
+    Submitting a request does not immediately change your plan.
+    <a href="mailto:support@amatotech.com?subject=AmatoPay plan request" style="color:var(--teal-600);font-weight:700;">Contact Support</a> for urgent changes.
+</p>
+
+<!-- Request modal -->
+<div class="ps-modal-overlay" id="planRequestModal">
+    <div class="ps-modal">
+        <div class="ps-modal-head">
+            <h2>Request plan change</h2>
+            <button class="ps-modal-close" onclick="closeModal()">×</button>
+        </div>
+        <form method="post" action="{% url 'portal:billing-request-plan' %}">
+            {% csrf_token %}
+            <input type="hidden" name="plan_code" id="modalPlanCode">
+            <div class="ps-modal-body">
+                <p>A payment request will be sent to your mobile number. Approve it to activate the plan immediately.</p>
+                <div class="ps-modal-plan-summary">
+                    <div class="icon" id="modalPlanIcon">◈</div>
+                    <div>
+                        <strong id="modalPlanName">—</strong>
+                        <span id="modalPlanPrice">—</span>
+                    </div>
+                </div>
+                <label for="modalPayerAlias">Mobile number (payer alias)</label>
+                <input type="tel" id="modalPayerAlias" name="payer_alias"
+                       placeholder="e.g. +25779000000"
+                       style="width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:9px;outline:0;font:13px/1.5 inherit;color:var(--ink);margin-bottom:14px;"
+                       required>
+                <label for="modalNote">Additional notes (optional)</label>
+                <textarea id="modalNote" name="note" placeholder="e.g. expected monthly volume, go-live date…"></textarea>
+            </div>
+            <div class="ps-modal-foot">
+                <button type="button" class="btn-cancel" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn-submit">Pay &amp; activate →</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+const ICONS = {
+    'starter': '◇', 'standard': '◈', 'business': '⬡',
+    'business-plus': '⬢', 'premium': '✦', 'enterprise': '⬟',
+    'unlimited': '∞', 'pay-as-you-go': '↔'
+};
+function openPlanRequest(name, price, code) {
+    document.getElementById('modalPlanName').textContent = name;
+    document.getElementById('modalPlanPrice').textContent = price;
+    document.getElementById('modalPlanCode').value = code;
+    document.getElementById('modalPlanIcon').textContent = ICONS[code] || '◈';
+    document.getElementById('planRequestModal').classList.add('open');
+}
+function closeModal() {
+    document.getElementById('planRequestModal').classList.remove('open');
+}
+document.getElementById('planRequestModal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+});
+</script>
+{% endblock %}

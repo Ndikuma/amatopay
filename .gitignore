@@ -1,0 +1,40 @@
+# Byte-code files
+*.pyc
+__pycache__/
+
+# Environments
+.env
+venv/
+.venv/
+env/
+.env/
+
+# IDEs and editors
+.idea/
+.vscode/
+*.swp
+*~
+.DS_Store
+
+# Django
+*.log
+*.sqlite3
+db.sqlite3
+media/
+staticfiles/
+
+# Python test and coverage
+.coverage
+.pytest_cache/
+.ruff_cache/
+
+# Docker
+*.pem
+
+# Packages
+dist/
+build/
+*.egg-info/
+
+# Jupyter Notebook
+.ipynb_checkpoints/

@@ -1,0 +1,109 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Delivery decision · AmatoPay</title>
+    <link rel="icon" href="{% static 'portal/favicon.svg' %}">
+    <link rel="stylesheet" href="{% static 'checkout/css/pay.css' %}">
+    <link rel="stylesheet" href="{% static 'checkout/css/delivery.css' %}">
+</head>
+<body>
+<main class="delivery-shell">
+    <section class="delivery-hero">
+        <a class="brand" href="/">AmatoPay</a>
+        <span class="secure-label">Protected delivery</span>
+        <h1>{% if available %}Confirm your delivery safely{% else %}Delivery decision unavailable{% endif %}</h1>
+        <p>{% if available %}Choose proof that matches what happened. Funds stay protected until confirmation or AmatoPay review completes.{% else %}This payment cannot be confirmed or reported through this portal.{% endif %}</p>
+        <div class="proof-steps" aria-label="Delivery confirmation options">
+            <div><b>1</b><span><strong>Secure code</strong><small>Fast release with payer-only code.</small></span></div>
+            <div><b>2</b><span><strong>Alternative proof</strong><small>Alias + receipt, photo, delivery note, or acceptance document.</small></span></div>
+            <div><b>3</b><span><strong>Problem report</strong><small>Freeze funds while AmatoPay investigates.</small></span></div>
+        </div>
+        <p class="security-note">Never enter banking PIN, password, account OTP, or card details here.</p>
+    </section>
+    <section class="checkout-card delivery-card">
+        <header>
+            <span class="brand">AmatoPay</span>
+            <h1>{% if available %}Your delivery decision{% else %}Delivery decision unavailable{% endif %}</h1>
+            <p>{% if available %}Secure-code confirmation is fastest. Other proof opens manual review, not automatic payout.{% else %}This payment cannot be confirmed or reported through the delivery portal.{% endif %}</p>
+        </header>
+
+        {% if completed %}
+        <div class="receipt-confirmed" role="status">
+            <div class="receipt-confirmed-icon" aria-hidden="true">✓</div>
+            <div>
+                <strong>Delivery confirmed</strong>
+                <p>The protected payment is being released for settlement. No further action is needed.</p>
+            </div>
+        </div>
+        {% endif %}
+
+        <dl class="order-summary">
+            <div><dt>Merchant</dt><dd>{{ payment.merchant.display_name }}</dd></div>
+            <div><dt>Order</dt><dd>{{ payment.session.order_number }}</dd></div>
+            <div><dt>Description</dt><dd>{{ payment.session.description }}</dd></div>
+            <div><dt>Protected amount</dt><dd>{{ payment.amount|floatformat:0 }} {{ payment.currency }}</dd></div>
+            <div><dt>Payment reference</dt><dd>{{ payment.reference }}</dd></div>
+            <div><dt>Protection deadline</dt><dd>{% if protection_deadline %}{{ protection_deadline|date:'d M Y, H:i' }}{% else %}Pending confirmation{% endif %}</dd></div>
+        </dl>
+
+        {% if not available %}
+            <div class="notice error"><strong>No protected delivery is active</strong><br>This payment is {{ payment.get_status_display|lower }}. Delivery confirmation and investigation are only available after a payment completes and its funds are protected. If money was deducted, contact AmatoPay support and provide the payment reference above.</div>
+        {% elif protection_deadline and not completed %}
+            <div class="notice">Domestic payments are protected for four business days. Confirm receipt or report a problem before {{ protection_deadline|date:'d M Y, H:i' }}.</div>
+        {% endif %}
+
+        {% for message in messages %}<div class="notice success">{{ message }}</div>{% endfor %}
+
+        {% if not available %}
+        {% elif completed %}
+            {# receipt-confirmed banner already shown above #}
+        {% elif active_claim %}
+            <div class="notice"><strong>Investigation open</strong><br>Claim {{ active_claim.id }} is {{ active_claim.get_status_display|lower }}. The funds remain protected while AmatoPay reviews your report.</div>
+        {% else %}
+            <form method="post" enctype="multipart/form-data" class="delivery-decision-form">
+                {% csrf_token %}
+                {{ form.non_field_errors }}
+                <fieldset class="decision-options">
+                    <legend>What happened?</legend>
+                    {{ form.decision }}
+                    {{ form.decision.errors }}
+                </fieldset>
+                <section class="proof-panel code-panel">
+                    <h2>Secure code confirmation</h2>
+                    <p>Use this only if payer received delivery and can provide AmatoPay delivery code.</p>
+                    <label for="{{ form.secure_code.id_for_label }}">{{ form.secure_code.label }}</label>
+                    {{ form.secure_code }}{{ form.secure_code.errors }}
+                </section>
+                <section class="proof-panel review-panel">
+                    <h2>Alternative proof review</h2>
+                    <p>No code? Verify payer alias and upload proof. AmatoPay reviews before any release.</p>
+                    <label for="{{ form.payer_alias.id_for_label }}">{{ form.payer_alias.label }}</label>
+                    {{ form.payer_alias }}{{ form.payer_alias.errors }}
+                    <small>{{ form.payer_alias.help_text }}</small>
+                    <label for="{{ form.proof_method.id_for_label }}">{{ form.proof_method.label }}</label>
+                    {{ form.proof_method }}{{ form.proof_method.errors }}
+                </section>
+                <section class="proof-panel report-panel">
+                    <h2>Report problem</h2>
+                    <p>If delivery is missing, damaged, incomplete, or wrong, funds stay frozen during investigation.</p>
+                    <span class="legacy-report-copy">I did not receive it or there is a problem</span>
+                    <label for="{{ form.reason.id_for_label }}">Problem</label>
+                    {{ form.reason }}{{ form.reason.errors }}
+                    <label for="{{ form.description.id_for_label }}">What happened?</label>
+                    {{ form.description }}{{ form.description.errors }}
+                    <small>{{ form.description.help_text }}</small>
+                    <label for="{{ form.evidence_file.id_for_label }}">Supporting evidence</label>
+                    {{ form.evidence_file }}{{ form.evidence_file.errors }}
+                    <small>{{ form.evidence_file.help_text }}</small>
+                </section>
+                <button type="submit">Submit secure decision</button>
+            </form>
+            <p class="security-note">Use only AmatoPay delivery code. Never share PIN, password, or account OTP.</p>
+        {% endif %}
+    </section>
+</main>
+</body>
+</html>

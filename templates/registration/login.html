@@ -1,0 +1,18 @@
+{% extends 'registration/auth_base.html' %}
+{% block title %}Sign in · AmatoPay{% endblock %}
+{% block content %}
+<p class="eyebrow">WELCOME BACK</p>
+<h2>Sign in to AmatoPay</h2>
+<p class="intro">Use the owner account created with your merchant application.</p>
+{% if form.errors %}<div class="form-alert" role="alert">The email or password is incorrect. Please try again.</div>{% endif %}
+{% if next and user.is_authenticated %}<div class="form-alert">Your account does not have access to that page.</div>{% endif %}
+<form method="post" class="auth-form">
+    {% csrf_token %}<input type="hidden" name="next" value="{{ next }}">
+    <label for="id_username">Email or username</label>
+    <input id="id_username" name="username" type="text" autocomplete="username" autofocus required placeholder="you@business.bi">
+    <div class="label-row"><label for="id_password">Password</label><a href="{% url 'password_reset' %}">Forgot password?</a></div>
+    <input id="id_password" name="password" type="password" autocomplete="current-password" required placeholder="Enter your password">
+    <button type="submit">Sign in securely <span>→</span></button>
+</form>
+<p class="auth-meta"><span>◇</span> Your session and sign-in activity are monitored for security.</p>
+{% endblock %}

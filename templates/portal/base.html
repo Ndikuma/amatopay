@@ -1,0 +1,107 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#071c27">
+        <title>{% block title %}AmatoPay{% endblock %}</title>
+        <link rel="icon"
+              href="{% static 'portal/favicon.svg' %}"
+              type="image/svg+xml">
+        <link rel="stylesheet" href="{% static 'portal/css/tailwind.css' %}">
+        <link rel="stylesheet" href="{% static 'portal/css/app.css' %}">
+    </head>
+    <body>
+        <a class="skip-link" href="#main-content">Skip to content</a>
+        <div class="app-shell">
+            <aside class="sidebar" id="sidebar">
+                <div class="sidebar-head">
+                    <a class="brand"
+                       href="{% url 'portal:dashboard' %}"
+                       aria-label="AmatoPay dashboard">
+                        <span class="brand-mark" aria-hidden="true">A</span>
+                        <span>Amato<span>Pay</span></span>
+                    </a>
+                    <button class="icon-button sidebar-close"
+                            type="button"
+                            data-close-menu
+                            aria-label="Close menu">×</button>
+                </div>
+                <nav class="nav" aria-label="Main navigation">
+                    <p class="nav-label">Workspace</p>
+                    <a href="{% url 'portal:dashboard' %}"
+                       {% if request.resolver_match.url_name == 'dashboard' %}class="active" aria-current="page"{% endif %}>
+                        <span class="nav-icon" aria-hidden="true">⌂</span> Overview
+                    </a>
+                    {% if portal_role != 'developer' %}
+                        <a href="{% url 'portal:payments' %}"
+                           {% if request.resolver_match.url_name == 'payments' or request.resolver_match.url_name == 'payment-detail' or request.resolver_match.url_name == 'payment-confirm-delivery' %}class="active" aria-current="page"{% endif %}>
+                            <span class="nav-icon" aria-hidden="true">↔</span> Payments
+                        </a>
+                    {% endif %}
+                    {% if portal_role == 'owner' or portal_role == 'admin' or portal_role == 'finance' or portal_role == 'viewer' %}
+                        <a href="{% url 'portal:settlements' %}"
+                           {% if request.resolver_match.url_name == 'settlements' %}class="active" aria-current="page"{% endif %}>
+                            <span class="nav-icon" aria-hidden="true">✓</span> Settlements
+                        </a>
+                    {% endif %}
+                    {% if portal_role == 'owner' or portal_role == 'admin' or portal_role == 'finance' or portal_role == 'support' %}
+                        <a href="{% url 'portal:refunds' %}"
+                           {% if request.resolver_match.url_name == 'refunds' %}class="active" aria-current="page"{% endif %}>
+                            <span class="nav-icon" aria-hidden="true">↶</span> Refunds
+                        </a>
+                    {% endif %}
+                    {% if portal_role != 'developer' %}
+                        <a href="{% url 'portal:trust' %}"
+                           {% if request.resolver_match.url_name == 'trust' %}class="active" aria-current="page"{% endif %}>
+                            <span class="nav-icon" aria-hidden="true">◇</span> Trust & compliance
+                        </a>
+                    {% endif %}
+                    <p class="nav-label nav-section">Build</p>
+                    {% if portal_role == 'owner' or portal_role == 'admin' or portal_role == 'developer' %}
+                        <a href="{% url 'portal:developers' %}"
+                           {% if request.resolver_match.url_name == 'developers' %}class="active" aria-current="page"{% endif %}>
+                            <span class="nav-icon" aria-hidden="true">&lt;/&gt;</span> Developers
+                        </a>
+                    {% endif %}
+                    <a href="{% url 'developer_docs' %}" target="_blank"><span class="nav-icon" aria-hidden="true">?</span> API documentation</a>
+                    <p class="nav-label nav-section">Account</p><a href="{% url 'portal:profile' %}"
+   {% if request.resolver_match.url_name == 'profile' %}class="active" aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">▣</span> Business profile</a>
+                    <a href="{% url 'portal:billing' %}" {% if request.resolver_match.url_name == 'billing' %}class="active" aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">◈</span> Billing &amp; plan</a>
+                    {% if request.user.is_staff %}
+                        <a href="/admin/">
+                            <span class="nav-icon" aria-hidden="true">⚙</span> Operations
+                        </a>
+                    {% endif %}
+                </nav>
+                <div class="sidebar-foot">
+                    <div class="environment"><span class="status-dot"></span> Platform operational</div>
+                    {% if merchant %}
+                        <div class="workspace-card">
+                            <span class="workspace-avatar">{{ merchant.display_name|first|upper }}</span>
+                            <span><strong>{{ merchant.display_name }}</strong><small>{{ portal_role|title }} · {{ merchant.merchant_code }}</small></span>
+                        </div>
+                        <form method="post" action="{% url 'logout' %}" class="logout-form">{% csrf_token %}<button type="submit"><span aria-hidden="true">↪</span> Sign out</button></form>
+                    {% endif %}
+                </div>
+            </aside>
+            <div class="page-shell">
+                <header class="mobile-header">
+                    <button class="icon-button"
+                            type="button"
+                            data-open-menu
+                            aria-label="Open menu">☰</button>
+                    <a class="brand compact" href="{% url 'portal:dashboard' %}"><span class="brand-mark">A</span> Amato<span>Pay</span></a>
+                </header>
+                <main id="main-content" tabindex="-1">
+                    {% if messages %}<div class="portal-messages">{% for message in messages %}<div class="portal-message portal-message-{{ message.tags|default:'info' }}">{{ message }}</div>{% endfor %}</div>{% endif %}
+                    {% block content %}{% endblock %}
+                </main>
+            </div>
+        </div>
+        <div class="scrim" data-close-menu></div>
+        <div class="tw-toast" role="status" aria-live="polite" data-toast><span aria-hidden="true">✓</span><span data-toast-message>Done</span></div>
+        <script src="{% static 'portal/js/app.js' %}" defer></script>
+    </body>
+</html>

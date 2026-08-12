@@ -1,0 +1,63 @@
+services:
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: amatopay
+      POSTGRES_USER: amatopay
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U amatopay -d amatopay"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+  web:
+    build: .
+    env_file: .env
+    expose: ["8000"]
+    volumes:
+      - staticfiles:/app/staticfiles
+      - media:/app/media
+      - security_data:/app/security-data
+    command: ["sh", "-c", "python manage.py migrate --noinput && python manage.py migrate --database=security security --noinput && python manage.py collectstatic --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 60 --access-logfile - --error-logfile -"]
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready/', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+  webhooks:
+    build: .
+    env_file: .env
+    command: ["python", "manage.py", "process_webhooks", "--watch", "--interval", "10"]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+  reconciliation:
+    build: .
+    env_file: .env
+    command: ["python", "manage.py", "reconcile_gateway", "--watch", "--interval", "20"]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+  proxy:
+    image: nginx:1.29-alpine
+    ports: ["8000:80"]
+    volumes:
+      - ./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - staticfiles:/var/www/static:ro
+    depends_on:
+      web:
+        condition: service_healthy
+    restart: unless-stopped
+volumes:
+  pgdata: {}
+  staticfiles: {}
+  media: {}
+  security_data: {}

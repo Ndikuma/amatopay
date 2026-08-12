@@ -1,0 +1,45 @@
+{% extends 'portal/base.html' %}
+{% block title %}Settlements · AmatoPay{% endblock %}
+{% block content %}
+    <header class="page-header">
+        <div>
+            <p class="eyebrow">Your money</p>
+            <h1>Settlements</h1>
+            <p class="page-subtitle">See every payout sent to {{ merchant.display_name }}.</p>
+        </div>
+        <div class="header-actions">
+            <button class="button button-secondary" onclick="window.print()">Export view</button>
+        </div>
+    </header>
+    <section class="panel">
+        <div class="panel-head toolbar">
+            <div>
+                <h2>Payout history</h2>
+                <p>{{ settlements|length }} recent settlements</p>
+            </div>
+            <label class="search-field">
+                <span>⌕</span><span class="sr-only">Search settlements</span><input type="search" placeholder="Search settlements" data-table-search>
+            </label>
+        </div>
+        <div class="table-scroll">
+            <table class="data-table" data-search-table>
+                <thead>
+                    <tr>
+                        <th>Settlement</th>
+                        <th>Payment</th>
+                        <th>Gross</th>
+                        <th>Applied rate</th>
+                        <th>Fees</th>
+                        <th>Net payout</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in settlements %}<tr><td><span class="payment-ref">{{ s.reference }}</span></td><td>{{ s.payment.reference }}</td><td>{{ s.gross_amount|floatformat:0 }} <span class="currency">BIF</span></td><td>{{ s.payment.fee_percentage|floatformat:2 }}%</td><td>{{ s.merchant_fee|floatformat:0 }} <span class="currency">BIF</span></td><td><strong>{{ s.net_amount|floatformat:0 }}</strong> <span class="currency">BIF</span></td><td><span class="status-pill status-{{ s.status }}"><span></span>{{ s.get_status_display }}</span></td><td>{{ s.created_at|date:'d M Y, H:i' }}</td></tr>
+                {% empty %}<tr><td colspan="8"><div class="empty-state"><span>◎</span><strong>No settlements yet</strong><p>Your completed payouts will appear here.</p></div></td></tr>{% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

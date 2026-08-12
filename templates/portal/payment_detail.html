@@ -1,0 +1,79 @@
+{% extends 'portal/base.html' %}
+{% block title %}{{ payment.reference }} · AmatoPay{% endblock %}
+{% block content %}
+<header class="page-header payment-detail-header">
+    <div>
+        <p class="eyebrow"><a href="{% url 'portal:payments' %}">Payments</a> / Detail</p>
+        <h1>{{ payment.reference }}</h1>
+        <p class="page-subtitle">Order {{ payment.session.order_number }} · Created {{ payment.created_at|date:'d M Y, H:i' }}</p>
+    </div>
+    <span class="status-pill status-{{ payment.status }}"><span></span>{{ payment.get_status_display }}</span>
+</header>
+
+<section class="payment-detail-grid">
+    <div class="detail-stack">
+        <article class="panel payment-summary-card">
+            <div class="panel-head"><div><h2>Payment summary</h2><p>Authoritative transaction information</p></div></div>
+            <dl class="payment-facts">
+                <div><dt>Gross amount</dt><dd>{{ payment.total_amount|floatformat:0 }} {{ payment.currency }}</dd></div>
+                <div><dt>AmatoPay fee</dt><dd>{{ payment.fee_amount|floatformat:0 }} {{ payment.currency }}</dd></div>
+                <div><dt>Merchant net</dt><dd>{{ payment.net_amount|floatformat:0 }} {{ payment.currency }}</dd></div>
+                <div><dt>Payer</dt><dd>{{ payment.payer_display_name|default:'Not available' }}</dd></div>
+                <div><dt>Payer alias</dt><dd>{{ payment.masked_payer_alias|default:'Not available' }}</dd></div>
+                <div><dt>Description</dt><dd>{{ payment.session.description }}</dd></div>
+                <div><dt>Paid at</dt><dd>{{ payment.paid_at|date:'d M Y, H:i'|default:'Not paid yet' }}</dd></div>
+                <div><dt>Payment reference</dt><dd class="payment-ref">{{ payment.reference }}</dd></div>
+            </dl>
+        </article>
+
+        <article class="panel timeline-card">
+            <div class="panel-head"><div><h2>Status timeline</h2><p>Every recorded stage of this payment</p></div></div>
+            <ol class="payment-timeline">
+                {% for event in history %}
+                <li class="timeline-event{% if forloop.last %} is-current{% endif %}">
+                    <span class="timeline-dot"></span>
+                    <div><strong>{{ event.label }}</strong><time datetime="{{ event.created_at|date:'c' }}">{{ event.created_at|date:'d M Y, H:i:s' }}</time>{% if event.reason %}<p>{{ event.reason }}</p>{% endif %}</div>
+                </li>
+                {% empty %}
+                <li class="timeline-event is-current"><span class="timeline-dot"></span><div><strong>{{ payment.get_status_display }}</strong><time>{{ payment.updated_at|date:'d M Y, H:i:s' }}</time></div></li>
+                {% endfor %}
+            </ol>
+        </article>
+    </div>
+
+    <aside class="detail-stack">
+        <article class="panel payout-destination-card">
+            <div class="panel-head"><div><h2>Settlement destination</h2><p>Where AmatoPay sends released merchant funds</p></div></div>
+            {% if settlement_account %}
+            <div class="payout-route">
+                <span class="payout-route-icon" aria-hidden="true">→</span>
+                <div><small>Verified {{ settlement_account.alias_type }} alias</small><strong>{{ settlement_account.alias_value }}</strong><p>{{ settlement_account.account_name|default:merchant.display_name }} · {{ settlement_account.currency }}</p></div>
+            </div>
+            <p class="payout-route-note">After delivery confirmation, AmatoPay pays <strong>{{ payment.net_amount|floatformat:0 }} {{ payment.currency }}</strong> from its fiduciary account to this alias by P2P.</p>
+            {% else %}
+            <div class="confirmation-locked"><strong>No eligible settlement alias</strong><p>Add and verify a primary MOBILE settlement alias for {{ payment.currency }} before funds can be released.</p></div>
+            {% endif %}
+        </article>
+        <article class="panel delivery-confirm-card">
+            <div class="panel-head"><div><h2>Verify delivery</h2><p>Use payer-controlled confirmation before protected funds move.</p></div></div>
+            {% if delivery_decision_url %}<div class="secure-notice"><strong>Customer delivery link</strong><p>Send this AmatoPay link first. Customer can confirm with code, request alternative-proof review, or report problem within the four-business-day protection window.</p><input type="text" value="{{ delivery_decision_url }}" readonly aria-label="Customer delivery decision URL"></div>{% endif %}
+            {% if can_confirm %}
+            <div class="secure-notice"><strong>Customer-authorized release</strong><p>Use code only after customer gives it to you. If customer has no code, send delivery link; alias/document proof opens AmatoPay review and never releases funds automatically.</p></div>
+            <form method="post" action="{% url 'portal:payment-confirm-delivery' payment.reference %}" class="delivery-code-form">
+                {% csrf_token %}
+                <label><span>Payment reference</span>{{ form.payment_reference }}{% for error in form.payment_reference.errors %}<em>{{ error }}</em>{% endfor %}</label>
+                <label><span>Secure delivery code</span>{{ form.secure_code }}{% for error in form.secure_code.errors %}<em>{{ error }}</em>{% endfor %}</label>
+                <button class="button button-primary" type="submit">Confirm with customer code</button>
+                <small>Five incorrect attempts lock secure-code verification. Do not ask for PIN, password, or OTP.</small>
+            </form>
+            {% elif payment.release_code_confirmed_at %}
+            <div class="confirmation-complete"><span>✓</span><strong>Delivery confirmed</strong><p>Confirmed {{ payment.release_code_confirmed_at|date:'d M Y, H:i' }}. Settlement processing has started.</p></div>
+            {% elif payment.release_code_locked_at %}
+            <div class="confirmation-locked"><strong>Verification locked</strong><p>Contact AmatoPay Operations for secure review.</p></div>
+            {% else %}
+            <div class="confirmation-waiting"><strong>Not ready for confirmation</strong><p>The payment must be completed and funds held before the delivery code can be verified.</p></div>
+            {% endif %}
+        </article>
+    </aside>
+</section>
+{% endblock %}
