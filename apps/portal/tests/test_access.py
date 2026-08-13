@@ -35,9 +35,8 @@ class PortalAccessTests(TestCase):
         home = self.client.get("/")
         self.assertEqual(home.status_code, 200)
         self.assertContains(home, "Start an investigation")
-        self.assertContains(home, "Provide alternative proof")
         self.assertContains(home, "funds stay protected")
-        self.assertContains(home, 'href="/deliveries/"', html=False)
+        self.assertContains(home, 'href="/deliveries/"')
         self.assertEqual(self.client.get("/developers/").status_code, 200)
         self.assertEqual(self.client.get("/account/sign-in/").status_code, 200)
 

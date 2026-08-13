@@ -2,34 +2,18 @@ from django import forms
 from django.core.validators import FileExtensionValidator
 
 
-ACCEPTANCE_PROOF_CHOICES = (
-    ("signed_delivery_note", "Signed delivery note"),
-    ("receipt_or_invoice", "Receipt or invoice"),
-    ("photo_or_screenshot", "Photo or screenshot"),
-    ("service_acceptance", "Service acceptance document"),
-    ("other", "Other supporting proof"),
-)
-
-
-EVIDENCE_HELP_TEXT = (
-    "Optional PDF, PNG, JPG, or text proof: receipt, photo, delivery note, "
-    "or service-acceptance document."
-)
-
-
 class PublicDeliveryDecisionForm(forms.Form):
     class Decision:
         CONFIRM = "confirm"
         REPORT = "report"
-        REVIEW = "review"
 
     decision = forms.ChoiceField(
         choices=(
             (Decision.CONFIRM, "I received it and have my AmatoPay code"),
-            (Decision.REVIEW, "I received it but need another proof method"),
             (Decision.REPORT, "I did not receive it or there is a problem"),
         ),
         widget=forms.RadioSelect,
+        initial=Decision.CONFIRM,
     )
     secure_code = forms.RegexField(
         regex=r"^\d{6}$",
@@ -37,20 +21,8 @@ class PublicDeliveryDecisionForm(forms.Form):
         max_length=6,
         label="Six-digit delivery code",
         required=False,
-        widget=forms.TextInput(
-            attrs={"inputmode": "numeric", "autocomplete": "one-time-code"}
-        ),
-    )
-    payer_alias = forms.CharField(
-        required=False,
-        max_length=160,
-        label="Payer mobile number or alias",
-        help_text="Use the same payer alias used for this payment.",
-    )
-    proof_method = forms.ChoiceField(
-        required=False,
-        label="Proof method",
-        choices=ACCEPTANCE_PROOF_CHOICES,
+        help_text="The code you received after payment.",
+        widget=forms.TextInput(attrs={"inputmode": "numeric", "autocomplete": "one-time-code"}),
     )
     reason = forms.ChoiceField(
         required=False,
@@ -71,30 +43,20 @@ class PublicDeliveryDecisionForm(forms.Form):
     evidence_file = forms.FileField(
         required=False,
         validators=[FileExtensionValidator(["pdf", "png", "jpg", "jpeg", "txt"])],
-        help_text=EVIDENCE_HELP_TEXT,
+        help_text="Optional PDF, PNG, JPG, or text proof (max 5 MB).",
     )
 
     def clean(self):
         cleaned = super().clean()
         decision = cleaned.get("decision")
-        if decision == self.Decision.CONFIRM and not cleaned.get("secure_code"):
-            self.add_error("secure_code", "Enter the code for immediate confirmation.")
-        if decision in {self.Decision.REPORT, self.Decision.REVIEW}:
-            if not cleaned.get("secure_code") and not cleaned.get("payer_alias", "").strip():
-                self.add_error(
-                    "payer_alias",
-                    "Enter either your delivery code or the payer alias used for payment.",
-                )
-        if decision == self.Decision.REVIEW:
-            if not cleaned.get("proof_method"):
-                self.add_error("proof_method", "Select the proof you can provide.")
+        if not cleaned.get("secure_code"):
+            self.add_error("secure_code", "Enter your six-digit delivery code.")
+
         if decision == self.Decision.REPORT:
             if not cleaned.get("reason"):
                 self.add_error("reason", "Select what went wrong.")
-        if decision in {self.Decision.REPORT, self.Decision.REVIEW} and not cleaned.get(
-            "description", ""
-        ).strip():
-            self.add_error("description", "Tell us what happened.")
+            if not cleaned.get("description", "").strip():
+                self.add_error("description", "Please tell us what happened.")
         return cleaned
 
     def clean_evidence_file(self):

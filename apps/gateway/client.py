@@ -60,3 +60,7 @@ def create_p2p(payload):
 
 def get_p2p_status(reference):
     return _mobilecash().get_transaction(reference)
+
+
+def send_sms(phone_number, message):
+    return _mobilecash().send_sms(phone_number, message)

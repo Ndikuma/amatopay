@@ -6,12 +6,8 @@ from drf_spectacular.utils import extend_schema, inline_serializer
 
 from apps.developers.authentication import MerchantApiKeyAuthentication
 from apps.developers.permissions import HasMerchantApiKey
-from apps.deliveries.serializers import (
-    DeliveryReviewRequestSerializer,
-    SecureDeliveryConfirmationSerializer,
-)
-from apps.deliveries.services import confirm_delivery_with_code, request_delivery_review
-
+from apps.deliveries.serializers import SecureDeliveryConfirmationSerializer
+from apps.deliveries.services import confirm_delivery_with_code
 from .models import Payment
 from .serializers import PaymentSerializer
 
@@ -75,48 +71,6 @@ class PaymentViewSet(ReadOnlyModelViewSet):
                 "payment_reference": payment.reference,
                 "delivery_confirmed": True,
                 "confirmation_id": confirmation.id,
-                "status": payment.status,
-            },
-            status=201 if created else 200,
-        )
-
-    @extend_schema(
-        summary="Open a manual delivery proof review",
-        description=(
-            "Use when the payer received delivery but cannot verify with the "
-            "six-digit code. This freezes funds and opens AmatoPay review; it "
-            "does not release funds automatically."
-        ),
-        request=DeliveryReviewRequestSerializer,
-        responses={
-            201: inline_serializer(
-                name="DeliveryReviewRequestResult",
-                fields={
-                    "payment_reference": serializers.CharField(),
-                    "review_opened": serializers.BooleanField(),
-                    "claim_id": serializers.UUIDField(),
-                    "status": serializers.CharField(),
-                },
-            )
-        },
-    )
-    @action(detail=True, methods=["post"], url_path="delivery-review")
-    def delivery_review(self, request, reference=None):
-        serializer = DeliveryReviewRequestSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        claim, created = request_delivery_review(
-            self.get_object(),
-            serializer.validated_data.get("secure_code"),
-            payer_alias=serializer.validated_data.get("payer_alias", ""),
-            reason=f"alternative_proof:{serializer.validated_data['proof_method']}",
-            description=serializer.validated_data["description"].strip(),
-        )
-        payment = self.get_object()
-        return Response(
-            {
-                "payment_reference": payment.reference,
-                "review_opened": True,
-                "claim_id": claim.id,
                 "status": payment.status,
             },
             status=201 if created else 200,

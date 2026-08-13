@@ -1,109 +1,148 @@
-{% load static %}
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Delivery decision · AmatoPay</title>
-    <link rel="icon" href="{% static 'portal/favicon.svg' %}">
-    <link rel="stylesheet" href="{% static 'checkout/css/pay.css' %}">
-    <link rel="stylesheet" href="{% static 'checkout/css/delivery.css' %}">
-</head>
-<body>
-<main class="delivery-shell">
-    <section class="delivery-hero">
-        <a class="brand" href="/">AmatoPay</a>
-        <span class="secure-label">Protected delivery</span>
-        <h1>{% if available %}Confirm your delivery safely{% else %}Delivery decision unavailable{% endif %}</h1>
-        <p>{% if available %}Choose proof that matches what happened. Funds stay protected until confirmation or AmatoPay review completes.{% else %}This payment cannot be confirmed or reported through this portal.{% endif %}</p>
-        <div class="proof-steps" aria-label="Delivery confirmation options">
-            <div><b>1</b><span><strong>Secure code</strong><small>Fast release with payer-only code.</small></span></div>
-            <div><b>2</b><span><strong>Alternative proof</strong><small>Alias + receipt, photo, delivery note, or acceptance document.</small></span></div>
-            <div><b>3</b><span><strong>Problem report</strong><small>Freeze funds while AmatoPay investigates.</small></span></div>
-        </div>
-        <p class="security-note">Never enter banking PIN, password, account OTP, or card details here.</p>
-    </section>
-    <section class="checkout-card delivery-card">
-        <header>
-            <span class="brand">AmatoPay</span>
-            <h1>{% if available %}Your delivery decision{% else %}Delivery decision unavailable{% endif %}</h1>
-            <p>{% if available %}Secure-code confirmation is fastest. Other proof opens manual review, not automatic payout.{% else %}This payment cannot be confirmed or reported through the delivery portal.{% endif %}</p>
-        </header>
+{% extends "checkout/base.html" %}
+{% load humanize %}
 
-        {% if completed %}
-        <div class="receipt-confirmed" role="status">
-            <div class="receipt-confirmed-icon" aria-hidden="true">✓</div>
-            <div>
-                <strong>Delivery confirmed</strong>
-                <p>The protected payment is being released for settlement. No further action is needed.</p>
+{% block title %}Confirm your delivery{% endblock %}
+
+{% block content %}
+<div class="bg-gray-50 font-sans">
+  <div class="min-h-screen flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <main class="w-full max-w-lg space-y-8">
+      <div class="text-center">
+        <a href="{% url 'home' %}" class="text-3xl font-bold text-gray-800 tracking-tight">AmatoPay</a>
+      </div>
+
+      <div class="bg-white p-8 rounded-2xl shadow-lg">
+        {% comment %} Main content based on payment status {% endcomment %}
+        {% if not available %}
+          <div class="text-center space-y-4">
+            <h1 class="text-2xl font-bold text-gray-900" id="page-heading">Decision Unavailable</h1>
+            <div class="p-4 bg-gray-100 border border-gray-200 rounded-lg text-sm text-gray-700">
+              <p>This payment is not currently eligible for a delivery decision.</p>
+              <p class="mt-1">This may be because it was cancelled, has already been settled, or is still being processed.</p>
+              <p class="mt-2">If you believe this is an error, please <a href="{% url 'home' %}#support" class="font-medium text-indigo-600 hover:text-indigo-500" aria-describedby="page-heading">contact AmatoPay support</a>.</p>
             </div>
-        </div>
-        {% endif %}
-
-        <dl class="order-summary">
-            <div><dt>Merchant</dt><dd>{{ payment.merchant.display_name }}</dd></div>
-            <div><dt>Order</dt><dd>{{ payment.session.order_number }}</dd></div>
-            <div><dt>Description</dt><dd>{{ payment.session.description }}</dd></div>
-            <div><dt>Protected amount</dt><dd>{{ payment.amount|floatformat:0 }} {{ payment.currency }}</dd></div>
-            <div><dt>Payment reference</dt><dd>{{ payment.reference }}</dd></div>
-            <div><dt>Protection deadline</dt><dd>{% if protection_deadline %}{{ protection_deadline|date:'d M Y, H:i' }}{% else %}Pending confirmation{% endif %}</dd></div>
-        </dl>
-
-        {% if not available %}
-            <div class="notice error"><strong>No protected delivery is active</strong><br>This payment is {{ payment.get_status_display|lower }}. Delivery confirmation and investigation are only available after a payment completes and its funds are protected. If money was deducted, contact AmatoPay support and provide the payment reference above.</div>
-        {% elif protection_deadline and not completed %}
-            <div class="notice">Domestic payments are protected for four business days. Confirm receipt or report a problem before {{ protection_deadline|date:'d M Y, H:i' }}.</div>
-        {% endif %}
-
-        {% for message in messages %}<div class="notice success">{{ message }}</div>{% endfor %}
-
-        {% if not available %}
+          </div>
         {% elif completed %}
-            {# receipt-confirmed banner already shown above #}
+          <div class="text-center space-y-4">
+            <h1 class="text-2xl font-bold text-green-700">Delivery Confirmed</h1>
+            <div class="p-4 bg-green-50 border-l-4 border-green-500 rounded-lg text-sm text-green-800" role="status">
+              <p>Thank you. We have recorded your delivery confirmation for this payment.</p>
+              <p class="mt-1">The protected funds are now being released to the merchant.</p>
+            </div>
+          </div>
         {% elif active_claim %}
-            <div class="notice"><strong>Investigation open</strong><br>Claim {{ active_claim.id }} is {{ active_claim.get_status_display|lower }}. The funds remain protected while AmatoPay reviews your report.</div>
+          <div class="text-center space-y-4">
+            <h1 class="text-2xl font-bold text-yellow-700">Investigation Open</h1>
+            <div class="p-4 bg-yellow-50 border-l-4 border-yellow-500 rounded-lg text-sm text-yellow-800" role="status">
+              <p>An investigation for this payment is already open. The funds will remain protected by AmatoPay until the case is resolved.</p>
+              <p class="mt-1">We will contact you if we need more information.</p>
+              <p class="mt-2 font-mono text-xs text-yellow-900">Claim Ref: {{ active_claim.id }}</p>
+            </div>
+          </div>
         {% else %}
-            <form method="post" enctype="multipart/form-data" class="delivery-decision-form">
-                {% csrf_token %}
-                {{ form.non_field_errors }}
-                <fieldset class="decision-options">
-                    <legend>What happened?</legend>
-                    {{ form.decision }}
-                    {{ form.decision.errors }}
-                </fieldset>
-                <section class="proof-panel code-panel">
-                    <h2>Secure code confirmation</h2>
-                    <p>Use this only if payer received delivery and can provide AmatoPay delivery code.</p>
-                    <label for="{{ form.secure_code.id_for_label }}">{{ form.secure_code.label }}</label>
-                    {{ form.secure_code }}{{ form.secure_code.errors }}
-                </section>
-                <section class="proof-panel review-panel">
-                    <h2>Alternative proof review</h2>
-                    <p>No code? Verify payer alias and upload proof. AmatoPay reviews before any release.</p>
-                    <label for="{{ form.payer_alias.id_for_label }}">{{ form.payer_alias.label }}</label>
-                    {{ form.payer_alias }}{{ form.payer_alias.errors }}
-                    <small>{{ form.payer_alias.help_text }}</small>
-                    <label for="{{ form.proof_method.id_for_label }}">{{ form.proof_method.label }}</label>
-                    {{ form.proof_method }}{{ form.proof_method.errors }}
-                </section>
-                <section class="proof-panel report-panel">
-                    <h2>Report problem</h2>
-                    <p>If delivery is missing, damaged, incomplete, or wrong, funds stay frozen during investigation.</p>
-                    <span class="legacy-report-copy">I did not receive it or there is a problem</span>
-                    <label for="{{ form.reason.id_for_label }}">Problem</label>
-                    {{ form.reason }}{{ form.reason.errors }}
-                    <label for="{{ form.description.id_for_label }}">What happened?</label>
-                    {{ form.description }}{{ form.description.errors }}
-                    <small>{{ form.description.help_text }}</small>
-                    <label for="{{ form.evidence_file.id_for_label }}">Supporting evidence</label>
-                    {{ form.evidence_file }}{{ form.evidence_file.errors }}
-                    <small>{{ form.evidence_file.help_text }}</small>
-                </section>
-                <button type="submit">Submit secure decision</button>
-            </form>
-            <p class="security-note">Use only AmatoPay delivery code. Never share PIN, password, or account OTP.</p>
+          <div class="text-center">
+            <h1 class="text-2xl font-bold text-gray-900">Confirm Your Delivery</h1>
+            <p class="mt-2 text-sm text-gray-600">
+              Confirm you have received the product or service from <strong>{{ payment.merchant.display_name }}</strong>.
+            </p>
+          </div>
+
+          <form method="post" class="mt-8 space-y-6" enctype="multipart/form-data" novalidate>
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+              <div class="bg-red-50 p-3 rounded-md" role="alert">
+                {% for error in form.non_field_errors %}
+                  <p class="text-sm text-red-700">{{ error }}</p>
+                {% endfor %}
+              </div>
+            {% endif %}
+
+            <fieldset class="space-y-4 border-none p-0 m-0">
+              <legend class="block text-sm font-medium text-gray-700 mb-2">Choose an option</legend>
+              {% for radio in form.decision %}
+                <label for="{{ radio.id_for_label }}" class="flex items-center p-4 border border-gray-200 rounded-lg has-[:checked]:border-indigo-500 has-[:checked]:ring-1 has-[:checked]:ring-indigo-500 cursor-pointer transition-all">
+                  {{ radio.tag|safe|add:" class='h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500'" }}
+                  <span class="ml-3 block text-sm font-medium text-gray-800">{{ radio.choice_label }}</span>
+                </label>
+              {% endfor %}
+            </fieldset>
+
+            <div>
+              <label for="{{ form.secure_code.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.secure_code.label }}</label>
+              {{ form.secure_code|safe|add:" class='mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm' aria-describedby='secure_code_errors'" }}
+              {% if form.secure_code.help_text %}<p class="mt-2 text-xs text-gray-500" id="secure_code_help">{{ form.secure_code.help_text }}</p>{% endif %}
+              {% for error in form.secure_code.errors %}<p class="mt-1 text-sm text-red-600" id="secure_code_errors" role="alert">{{ error }}</p>{% endfor %}
+            </div>
+
+            <div id="report-fields" class="hidden space-y-4 pt-4 border-t border-gray-200">
+              <div>
+                <label for="{{ form.reason.id_for_label }}" class="block text-sm font-medium text-gray-700">What went wrong?</label>
+                {{ form.reason|safe|add:" class='mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md' aria-describedby='reason_errors'" }}
+                {% for error in form.reason.errors %}<p class="mt-1 text-sm text-red-600" id="reason_errors" role="alert">{{ error }}</p>{% endfor %}
+              </div>
+              <div>
+                <label for="{{ form.description.id_for_label }}" class="block text-sm font-medium text-gray-700">Please describe the problem</label>
+                {{ form.description|safe|add:" class='mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm' aria-describedby='description_errors'" }}
+                {% if form.description.help_text %}<p class="mt-2 text-xs text-gray-500" id="description_help">{{ form.description.help_text }}</p>{% endif %}
+                {% for error in form.description.errors %}<p class="mt-1 text-sm text-red-600" id="description_errors" role="alert">{{ error }}</p>{% endfor %}
+              </div>
+              <div>
+                <label for="{{ form.evidence_file.id_for_label }}" class="block text-sm font-medium text-gray-700">Attach evidence (optional)</label>
+                {{ form.evidence_file|safe|add:" class='mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer' aria-describedby='evidence_file_errors'" }}
+                {% if form.evidence_file.help_text %}<p class="mt-2 text-xs text-gray-500" id="evidence_file_help">{{ form.evidence_file.help_text }}</p>{% endif %}
+                {% for error in form.evidence_file.errors %}<p class="mt-1 text-sm text-red-600" id="evidence_file_errors" role="alert">{{ error }}</p>{% endfor %}
+              </div>
+            </div>
+
+            <button type="submit" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">Submit Securely</button>
+          </form>
         {% endif %}
-    </section>
-</main>
-</body>
-</html>
+      </div>
+
+      <div class="bg-white p-6 rounded-2xl shadow-lg">
+        <h2 class="text-base font-semibold text-gray-900">Payment Summary</h2>
+        <dl class="mt-4 space-y-3 text-sm text-gray-600">
+          <div class="flex justify-between"><dt>Merchant:</dt><dd class="font-medium text-gray-900">{{ payment.merchant.display_name }}</dd></div>
+          <div class="flex justify-between"><dt>Amount:</dt><dd class="font-medium text-gray-900">{{ payment.amount|floatformat:0|intcomma }} {{ payment.currency }}</dd></div>
+          <div class="flex justify-between"><dt>Description:</dt><dd class="font-medium text-gray-900 text-right">{{ payment.session.description }}</dd></div>
+          <div class="flex justify-between"><dt>Reference:</dt><dd class="font-mono text-xs text-gray-800">{{ payment.reference }}</dd></div>
+        </dl>
+        {% if protection_deadline %}
+          <div class="mt-4 p-3 bg-gray-50 rounded-lg text-xs text-gray-600 border border-gray-200">
+            <strong>Protection deadline:</strong> {{ protection_deadline|date:"F j, Y" }}. If you do not act by this date, funds may be released automatically.
+          </div>
+        {% endif %}
+      </div>
+    </main>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+    const decisionRadios = document.querySelectorAll('input[name="decision"]');
+    const reportFields = document.getElementById('report-fields');
+    const reasonField = document.querySelector('[name="reason"]');
+    const descriptionField = document.querySelector('[name="description"]');
+
+    function toggleReportFields() {
+      const selected = document.querySelector('input[name="decision"]:checked').value;
+      if (selected === 'report') {
+        reportFields.classList.remove('hidden', 'opacity-0');
+        reasonField.required = true;
+        descriptionField.required = true;
+      } else {
+        reportFields.classList.add('hidden', 'opacity-0');
+        reasonField.required = false;
+        descriptionField.required = false;
+      }
+    }
+
+    decisionRadios.forEach(radio => {
+      radio.addEventListener('change', toggleReportFields);
+    });
+
+    // Initial check on page load
+    toggleReportFields();
+  });
+    </script>
+  </div>
+</div>
+{% endblock %}

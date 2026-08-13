@@ -2,7 +2,6 @@ from datetime import timedelta
 from unittest.mock import patch
 
 from django.contrib.auth.hashers import make_password
-from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
@@ -125,14 +124,10 @@ class SecureDeliveryConfirmationTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Confirm your delivery")
-        self.assertContains(response, "I did not receive it or there is a problem")
-        self.assertContains(response, "four business days")
+        self.assertContains(response, "If you did not receive it or there is a problem")
         self.assertContains(response, "Protection deadline")
-        self.assertContains(response, "/static/checkout/css/delivery.css")
 
     def test_customer_can_find_payment_from_public_lookup(self):
-        lookup = self.client.get("/deliveries/")
-        self.assertContains(lookup, "/static/checkout/css/delivery.css")
         response = self.client.post(
             "/deliveries/", {"payment_reference": self.payment.reference}
         )
@@ -218,82 +213,4 @@ class SecureDeliveryConfirmationTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.payment.refresh_from_db()
         self.assertEqual(self.payment.release_code_failed_attempts, 1)
-        self.assertFalse(ProtectionClaim.objects.filter(payment=self.payment).exists())
-
-    @override_settings(MEDIA_ROOT="/tmp/amatopay-delivery-test-media")
-    def test_customer_without_code_can_request_review_with_alias_and_evidence(self):
-        response = self.client.post(
-            f"/deliveries/{self.payment.reference}/",
-            {
-                "decision": "review",
-                "payer_alias": "+257 7900 1111",
-                "proof_method": "receipt_or_invoice",
-                "description": "I received the service but the release code never arrived.",
-                "evidence_file": SimpleUploadedFile(
-                    "receipt.txt", b"customer receipt", content_type="text/plain"
-                ),
-            },
-            follow=True,
-        )
-
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Investigation open")
-        claim = ProtectionClaim.objects.get(payment=self.payment)
-        self.assertEqual(claim.reason, "alternative_proof:receipt_or_invoice")
-        self.assertEqual(
-            claim.opened_by, "payer_public_portal:verified_payer_alias"
-        )
-        self.assertEqual(claim.evidence_items.count(), 1)
-        self.payment.refresh_from_db()
-        self.assertEqual(self.payment.status, Payment.Status.DISPUTED)
-        self.assertEqual(self.payment.delivery.status, "under_review")
-        self.assertEqual(self.payment.delivery.confirmation.decision, "review")
-
-    def test_customer_without_code_cannot_use_wrong_payer_alias(self):
-        response = self.client.post(
-            f"/deliveries/{self.payment.reference}/",
-            {
-                "decision": "review",
-                "payer_alias": "+25700000000",
-                "proof_method": "receipt_or_invoice",
-                "description": "Please review this delivery.",
-            },
-        )
-
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "payer alias does not match", html=False)
-        self.assertFalse(ProtectionClaim.objects.filter(payment=self.payment).exists())
-
-    def test_merchant_can_open_delivery_review_with_alias(self):
-        response = self.client.post(
-            f"/api/v1/payments/{self.payment.reference}/delivery-review/",
-            {
-                "payer_alias": "+257 7900 1111",
-                "proof_method": "signed_delivery_note",
-                "description": "Customer signed delivery note but has no code.",
-            },
-            format="json",
-        )
-
-        self.assertEqual(response.status_code, 201)
-        self.assertTrue(response.json()["review_opened"])
-        claim = ProtectionClaim.objects.get(payment=self.payment)
-        self.assertEqual(claim.reason, "alternative_proof:signed_delivery_note")
-        self.payment.refresh_from_db()
-        self.assertEqual(self.payment.status, Payment.Status.DISPUTED)
-        self.assertEqual(self.payment.delivery.status, "under_review")
-        self.assertEqual(self.payment.delivery.confirmation.decision, "review")
-
-    def test_merchant_delivery_review_with_wrong_alias_is_rejected(self):
-        response = self.client.post(
-            f"/api/v1/payments/{self.payment.reference}/delivery-review/",
-            {
-                "payer_alias": "+25700000000",
-                "proof_method": "signed_delivery_note",
-                "description": "Customer signed delivery note but has no code.",
-            },
-            format="json",
-        )
-
-        self.assertEqual(response.status_code, 403)
         self.assertFalse(ProtectionClaim.objects.filter(payment=self.payment).exists())

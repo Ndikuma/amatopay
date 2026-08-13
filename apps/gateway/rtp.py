@@ -7,6 +7,7 @@ from django.db import transaction
 
 from . import client
 from .models import RTPRequest
+from .signals import rtp_created_with_release_code
 from .release_codes import encrypt_release_code
 
 
@@ -77,4 +78,8 @@ def persist_rtp_request(
         rtp_kwargs["plan_request"] = plan_request
     if release_code:
         rtp_kwargs["release_code_ciphertext"] = encrypt_release_code(release_code)
-    return RTPRequest.objects.create(**rtp_kwargs)
+
+    rtp = RTPRequest.objects.create(**rtp_kwargs)
+    if release_code and rtp.payment:
+        rtp_created_with_release_code.send(sender=RTPRequest, rtp=rtp, release_code=release_code)
+    return rtp

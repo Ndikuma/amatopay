@@ -131,9 +131,8 @@ def _normalize_alias(value):
 
 def open_customer_delivery_claim(
     payment,
-    secure_code=None,
+    secure_code,
     *,
-    payer_alias="",
     reason,
     description,
     evidence_file=None,
@@ -141,7 +140,6 @@ def open_customer_delivery_claim(
     return request_delivery_review(
         payment,
         secure_code,
-        payer_alias=payer_alias,
         reason=reason,
         description=description,
         evidence_file=evidence_file,
@@ -153,9 +151,8 @@ def open_customer_delivery_claim(
 
 def request_delivery_review(
     payment,
-    secure_code=None,
+    secure_code,
     *,
-    payer_alias="",
     reason,
     description,
     evidence_file=None,
@@ -178,16 +175,12 @@ def request_delivery_review(
                 {"detail": "This payment is not eligible for a delivery investigation."}
             )
 
+        try:
+            _validate_release_code(payment, secure_code)
+        except PermissionDenied:
+            invalid_code = True
+
         authenticated_by = DeliveryConfirmation.Method.PAYER_SECURE_CODE
-        if secure_code:
-            try:
-                _validate_release_code(payment, secure_code)
-            except PermissionDenied:
-                invalid_code = True
-        elif _normalize_alias(payer_alias) != _normalize_alias(payment.payer_alias):
-            raise PermissionDenied("The payer alias does not match this payment.")
-        else:
-            authenticated_by = DeliveryConfirmation.Method.VERIFIED_PAYER_ALIAS
         if not invalid_code:
             delivery, _ = Delivery.objects.get_or_create(payment=payment)
             delivery.status = delivery_status

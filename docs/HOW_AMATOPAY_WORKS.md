@@ -59,10 +59,9 @@ AmatoPay shows a `whsec_...` signing secret once. Each webhook contains an `Amat
 9. Browser returns to merchant `return_url`.
 10. After delivering the product or service, the merchant sends the public delivery link to the payer or submits the payer-provided six-digit code to `POST /api/v1/payments/{reference}/confirm-delivery/`.
 11. A correct code confirms delivery and makes the held funds eligible for release. Five incorrect attempts lock verification.
-12. If code is unavailable, payer alias + receipt/photo/delivery-note/service-acceptance proof opens manual AmatoPay review. It freezes funds and never releases automatically.
-13. AmatoPay creates the net settlement and sends P2P from the AmatoPay fiduciary alias to the merchant's verified receiver alias.
-14. AmatoPay polls the MobileCash transaction reference for the P2P result.
-15. AmatoPay completes Settlement/FundHold/Payment and emits `settlement.completed`.
+12. AmatoPay creates the net settlement and sends P2P from the AmatoPay fiduciary alias to the merchant's verified receiver alias.
+13. AmatoPay polls the MobileCash transaction reference for the P2P result.
+14. AmatoPay completes Settlement/FundHold/Payment and emits `settlement.completed`.
 
 ### Confirm delivery with the payer's secure code
 

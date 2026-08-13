@@ -6,13 +6,8 @@ from django.views.decorators.http import require_http_methods
 from rest_framework.exceptions import APIException
 
 from apps.payments.models import Payment
-
 from .forms import PublicDeliveryDecisionForm
-from .services import (
-    confirm_delivery_with_code,
-    open_customer_delivery_claim,
-    request_delivery_review,
-)
+from .services import confirm_delivery_with_code, open_customer_delivery_claim
 
 
 def _delivery_decision_is_available(payment):
@@ -64,25 +59,10 @@ def customer_delivery(request, reference):
             if form.cleaned_data["decision"] == form.Decision.CONFIRM:
                 confirm_delivery_with_code(payment, form.cleaned_data["secure_code"])
                 messages.success(request, "Delivery confirmed. Thank you.")
-            elif form.cleaned_data["decision"] == form.Decision.REVIEW:
-                proof_method = form.cleaned_data["proof_method"]
-                request_delivery_review(
-                    payment,
-                    form.cleaned_data["secure_code"],
-                    payer_alias=form.cleaned_data["payer_alias"],
-                    reason=f"alternative_proof:{proof_method}",
-                    description=form.cleaned_data["description"].strip(),
-                    evidence_file=form.cleaned_data["evidence_file"],
-                )
-                messages.success(
-                    request,
-                    "Manual delivery review opened. Funds stay protected while AmatoPay verifies the proof.",
-                )
             else:
                 open_customer_delivery_claim(
                     payment,
                     form.cleaned_data["secure_code"],
-                    payer_alias=form.cleaned_data["payer_alias"],
                     reason=form.cleaned_data["reason"],
                     description=form.cleaned_data["description"].strip(),
                     evidence_file=form.cleaned_data["evidence_file"],

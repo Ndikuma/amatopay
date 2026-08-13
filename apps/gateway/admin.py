@@ -4,6 +4,7 @@ from django.utils.html import format_html
 from unfold.admin import ModelAdmin
 
 from apps.core.admin_base import ReadOnlyAmatoModelAdmin
+from . import client
 
 from .provider import MobileCashGateway
 from .release_codes import decrypt_release_code
@@ -111,10 +112,37 @@ class RTPRequestAdmin(ReadOnlyAmatoModelAdmin):
             'style="font-family:monospace;font-size:1.1rem;letter-spacing:.15em;'
             'max-width:10rem;padding:.4rem .6rem">'
             '<button type="button" class="button" '
+            'data-rtp-id="{}" data-action="resend-sms" '
             'onclick="navigator.clipboard.writeText(this.previousElementSibling.value);'
             'this.textContent=&quot;Copied&quot;">Copy</button></span>',
             code,
         )
+
+
+    actions = ("resend_delivery_code_sms",)
+
+    @admin.action(description="Resend secure delivery code via SMS")
+    def resend_delivery_code_sms(self, request, queryset):
+        sent_count = 0
+        for rtp in queryset:
+            if not rtp.release_code_ciphertext or not rtp.payment:
+                continue
+            try:
+                code = decrypt_release_code(rtp.release_code_ciphertext)
+                phone_number = rtp.payment.payer_alias
+                message = f"Your AmatoPay secure delivery code is: {code}"
+                client.send_sms(phone_number, message)
+                sent_count += 1
+            except Exception as exc:
+                self.message_user(
+                    request,
+                    f"Could not resend code for {rtp.request_id}: {exc}",
+                    level=messages.ERROR,
+                )
+        if sent_count:
+            self.message_user(
+                request, f"Successfully resent {sent_count} delivery code(s) via SMS."
+            )
 
 
 admin.site.register(

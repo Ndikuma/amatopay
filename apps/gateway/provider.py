@@ -66,13 +66,16 @@ class MobileCashGateway:
         with self._token_lock:
             if self._token and time.time() < self._token_expires_at - 30:
                 return self._token
-            response = self._session.post(
-                f"{self.base_url}{endpoints.LOGIN}",
-                json={"username": self.username, "password": self.password},
-                timeout=self.timeout,
-                verify=self.verify_tls,
-            )
-            self._raise_for_error(response, "login")
+            try:
+                response = self._session.post(
+                    f"{self.base_url}{endpoints.LOGIN}",
+                    json={"username": self.username, "password": self.password},
+                    timeout=self.timeout,
+                    verify=self.verify_tls,
+                )
+                self._raise_for_error(response, "login")
+            except requests.RequestException as exc:
+                raise MobileCashGatewayError("login", 503, str(exc)) from exc
             data = response.json()
             self._token = data["jwt"]
             self._token_expires_at = self._parse_expiry(data.get("jwtExpiresAt", ""))
@@ -90,17 +93,7 @@ class MobileCashGateway:
         headers = kwargs.pop("headers", {})
         headers["Authorization"] = f"Bearer {self._refresh_token()}"
         headers.setdefault("Accept", "application/json")
-        response = self._session.request(
-            method,
-            f"{self.base_url}{path}",
-            headers=headers,
-            timeout=self.timeout,
-            verify=self.verify_tls,
-            **kwargs,
-        )
-        if response.status_code == 401:
-            self._token = None
-            headers["Authorization"] = f"Bearer {self._refresh_token()}"
+        try:
             response = self._session.request(
                 method,
                 f"{self.base_url}{path}",
@@ -109,8 +102,21 @@ class MobileCashGateway:
                 verify=self.verify_tls,
                 **kwargs,
             )
-        self._raise_for_error(response, operation)
-        return response.json() if response.content else {}
+            if response.status_code == 401:
+                self._token = None
+                headers["Authorization"] = f"Bearer {self._refresh_token()}"
+                response = self._session.request(
+                    method,
+                    f"{self.base_url}{path}",
+                    headers=headers,
+                    timeout=self.timeout,
+                    verify=self.verify_tls,
+                    **kwargs,
+                )
+            self._raise_for_error(response, operation)
+            return response.json() if response.content else {}
+        except requests.RequestException as exc:
+            raise MobileCashGatewayError(operation, 503, str(exc)) from exc
 
     @staticmethod
     def _raise_for_error(response, operation: str) -> None:
@@ -246,6 +252,20 @@ class MobileCashGateway:
             "provider": result,
         }
 
+    def send_sms(self, phone_number: str, message: str) -> dict[str, Any]:
+        """Send an SMS notification to a customer."""
+        payload = {
+            "phoneNumber": phone_number,
+            "message": message,
+            "notificationCode": "PIN",
+        }
+        return self._request(
+            "POST",
+            endpoints.SEND_SMS,
+            "sms.send",
+            json=payload,
+        )
+
     def get_transaction(self, reference: str) -> dict[str, Any]:
         result = self._request(
             "GET",
@@ -293,6 +313,7 @@ class MobileCashGateway:
             "ACCEPTED": "PROCESSING",
             "APPROVED": "PROCESSING",
             "AWAITING": "AWAITING_APPROVAL",
+            "AWAITINGPAYERDECISION": "AWAITING_APPROVAL",
             "DECLINED": "REJECTED",
             "EXPIRED": "FAILED",
         }

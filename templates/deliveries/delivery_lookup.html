@@ -1,43 +1,27 @@
-{% load static %}
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Customer protection · AmatoPay</title>
-    <link rel="icon" href="{% static 'portal/favicon.svg' %}">
-    <link rel="stylesheet" href="{% static 'checkout/css/pay.css' %}">
-    <link rel="stylesheet" href="{% static 'checkout/css/delivery.css' %}">
-</head>
-<body>
-<main class="delivery-shell lookup-shell">
-    <section class="delivery-hero">
-        <a class="brand" href="/">AmatoPay</a>
-        <span class="secure-label">Customer protection</span>
-        <h1>Find protected payment</h1>
-        <p>Use payment reference from receipt or delivery link. Payer can confirm, request manual proof review, or report problem.</p>
-        <div class="proof-steps">
-            <div><b>✓</b><span><strong>Confirm receipt</strong><small>Six-digit delivery code releases funds.</small></span></div>
-            <div><b>◇</b><span><strong>Need another proof method</strong><small>Alias + document opens review.</small></span></div>
-            <div><b>!</b><span><strong>Delivery problem</strong><small>Funds stay frozen during investigation.</small></span></div>
-        </div>
-    </section>
-    <section class="checkout-card delivery-card">
-        <header>
-            <a class="brand" href="/">AmatoPay</a>
-            <h1>Enter payment reference</h1>
-            <p>Use reference from your receipt or merchant delivery link.</p>
-        </header>
-        <div class="notice"><strong>Four-business-day protection</strong><br>Confirm delivery or start review before the protection deadline shown on your payment.</div>
-        {% if error %}<div class="notice error">{{ error }}</div>{% endif %}
-        <form method="post">
-            {% csrf_token %}
-            <label for="payment_reference">Payment reference</label>
-            <input id="payment_reference" name="payment_reference" value="{{ payment_reference }}" placeholder="AMP-PAY-..." autocomplete="off" required>
-            <button type="submit">Continue securely</button>
-        </form>
-        <p class="security-note">You will still need delivery code or original payer alias. Never enter banking PIN, password, or OTP.</p>
-    </section>
-</main>
-</body>
-</html>
+{% extends "checkout/base.html" %}
+
+{% block title %}Find your protected payment{% endblock %}
+
+{% block content %}
+<div class="bg-gray-50 flex items-center justify-center min-h-screen py-12 px-4 sm:px-6 lg:px-8">
+  <div class="w-full max-w-md">
+    <div class="bg-white p-8 rounded-2xl shadow-lg space-y-6">
+      <div class="text-center">
+        <a href="{% url 'home' %}" class="text-3xl font-bold text-gray-800 tracking-tight">AmatoPay</a>
+      </div>
+      <div>
+        <h1 class="text-2xl font-semibold text-center text-gray-900">Find your protected payment</h1>
+        <p class="mt-2 text-center text-sm text-gray-600">
+          Enter your AmatoPay payment reference (e.g., AMP-PAY-...) to confirm delivery or start an investigation.
+        </p>
+      </div>
+      <form method="post" class="space-y-6">
+        {% csrf_token %}
+        <input type="text" name="payment_reference" value="{{ payment_reference }}" placeholder="AMP-PAY-..." class="w-full px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" required>
+        {% if error %}<p class="text-sm text-red-600">{{ error }}</p>{% endif %}
+        <button type="submit" class="w-full px-4 py-2 font-semibold text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">Find payment</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
