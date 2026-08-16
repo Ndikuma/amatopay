@@ -52,15 +52,4 @@ class PaymentSessionViewSet(
             "-created_at"
         )
 
-    @action(detail=True, methods=["post"])
-    def cancel(self, request, *args, **kwargs):
-        session = self.get_object()
-        if session.status not in {
-            PaymentSession.Status.CREATED,
-            PaymentSession.Status.AWAITING_ALIAS,
-            PaymentSession.Status.ALIAS_VERIFIED,
-        }:
-            raise ValidationError("This payment session can no longer be cancelled.")
-        session.status = PaymentSession.Status.CANCELLED
-        session.save(update_fields=["status", "updated_at"])
-        return Response(self.get_serializer(session).data)
+   

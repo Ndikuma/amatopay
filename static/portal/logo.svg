@@ -1,0 +1,151 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 360 80"
+  width="360"
+  height="80"
+  fill="none"
+  role="img"
+  aria-labelledby="amatopay-title amatopay-desc"
+  style="
+    --ap-text: #0F172A;
+    --ap-muted: #64748B;
+    --ap-icon-bg: #F8FAFC;
+    --ap-icon-border: #0F172A;
+  "
+>
+
+  <title id="amatopay-title">AmatoPay</title>
+
+  <desc id="amatopay-desc">
+    AmatoPay payment gateway logo
+  </desc>
+
+  <defs>
+
+    <!-- Brand gradient -->
+    <linearGradient
+      id="amatopay-brand"
+      x1="0"
+      y1="0"
+      x2="1"
+      y2="0"
+    >
+      <stop
+        offset="0%"
+        stop-color="#5EEAD4"
+      />
+
+      <stop
+        offset="50%"
+        stop-color="#2DD4BF"
+      />
+
+      <stop
+        offset="100%"
+        stop-color="#14B8A6"
+      />
+    </linearGradient>
+
+  </defs>
+
+
+  <!-- ====================================================== -->
+  <!-- ICON -->
+  <!-- ====================================================== -->
+
+  <g transform="translate(8 8)">
+
+    <!-- Icon background -->
+    <rect
+      width="64"
+      height="64"
+      rx="16"
+      fill="var(--ap-icon-bg)"
+    />
+
+    <!-- Icon border -->
+    <rect
+      x="1"
+      y="1"
+      width="62"
+      height="62"
+      rx="15"
+      fill="none"
+      stroke="var(--ap-icon-border)"
+      stroke-width="1"
+      stroke-opacity=".12"
+    />
+
+    <!-- A mark -->
+    <path
+      d="
+        M17 48
+        L28.7 17
+        H35.3
+        L47 48
+        H39.2
+        L37.1 41.5
+        H26.9
+        L24.8 48
+        H17
+        Z
+
+        M29.1 35.3
+        H34.9
+        L32 26.2
+        Z
+      "
+      fill="url(#amatopay-brand)"
+    />
+
+  </g>
+
+
+  <!-- ====================================================== -->
+  <!-- WORDMARK -->
+  <!-- ====================================================== -->
+
+  <g
+    transform="translate(88 0)"
+    font-family="Inter, Segoe UI, Helvetica Neue, Arial, sans-serif"
+  >
+
+    <!-- Amato -->
+    <text
+      x="0"
+      y="42"
+      font-size="32"
+      font-weight="700"
+      letter-spacing="-1.4"
+      fill="var(--ap-text)"
+    >
+      Amato
+    </text>
+
+    <!-- Pay -->
+    <text
+      x="106"
+      y="42"
+      font-size="32"
+      font-weight="700"
+      letter-spacing="-1.4"
+      fill="url(#amatopay-brand)"
+    >
+      Pay
+    </text>
+
+    <!-- Tagline -->
+    <text
+      x="1"
+      y="59"
+      font-size="8.5"
+      font-weight="600"
+      letter-spacing="2.8"
+      fill="var(--ap-muted)"
+    >
+      PAYMENT GATEWAY
+    </text>
+
+  </g>
+
+</svg>

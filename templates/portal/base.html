@@ -1,107 +1,319 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <meta name="theme-color" content="#071c27">
-        <title>{% block title %}AmatoPay{% endblock %}</title>
-        <link rel="icon"
-              href="{% static 'portal/favicon.svg' %}"
-              type="image/svg+xml">
-        <link rel="stylesheet" href="{% static 'portal/css/tailwind.css' %}">
-        <link rel="stylesheet" href="{% static 'portal/css/app.css' %}">
-    </head>
-    <body>
-        <a class="skip-link" href="#main-content">Skip to content</a>
-        <div class="app-shell">
-            <aside class="sidebar" id="sidebar">
-                <div class="sidebar-head">
-                    <a class="brand"
-                       href="{% url 'portal:dashboard' %}"
-                       aria-label="AmatoPay dashboard">
-                        <span class="brand-mark" aria-hidden="true">A</span>
-                        <span>Amato<span>Pay</span></span>
-                    </a>
-                    <button class="icon-button sidebar-close"
-                            type="button"
-                            data-close-menu
-                            aria-label="Close menu">×</button>
-                </div>
-                <nav class="nav" aria-label="Main navigation">
-                    <p class="nav-label">Workspace</p>
-                    <a href="{% url 'portal:dashboard' %}"
-                       {% if request.resolver_match.url_name == 'dashboard' %}class="active" aria-current="page"{% endif %}>
-                        <span class="nav-icon" aria-hidden="true">⌂</span> Overview
-                    </a>
-                    {% if portal_role != 'developer' %}
-                        <a href="{% url 'portal:payments' %}"
-                           {% if request.resolver_match.url_name == 'payments' or request.resolver_match.url_name == 'payment-detail' or request.resolver_match.url_name == 'payment-confirm-delivery' %}class="active" aria-current="page"{% endif %}>
-                            <span class="nav-icon" aria-hidden="true">↔</span> Payments
-                        </a>
-                    {% endif %}
-                    {% if portal_role == 'owner' or portal_role == 'admin' or portal_role == 'finance' or portal_role == 'viewer' %}
-                        <a href="{% url 'portal:settlements' %}"
-                           {% if request.resolver_match.url_name == 'settlements' %}class="active" aria-current="page"{% endif %}>
-                            <span class="nav-icon" aria-hidden="true">✓</span> Settlements
-                        </a>
-                    {% endif %}
-                    {% if portal_role == 'owner' or portal_role == 'admin' or portal_role == 'finance' or portal_role == 'support' %}
-                        <a href="{% url 'portal:refunds' %}"
-                           {% if request.resolver_match.url_name == 'refunds' %}class="active" aria-current="page"{% endif %}>
-                            <span class="nav-icon" aria-hidden="true">↶</span> Refunds
-                        </a>
-                    {% endif %}
-                    {% if portal_role != 'developer' %}
-                        <a href="{% url 'portal:trust' %}"
-                           {% if request.resolver_match.url_name == 'trust' %}class="active" aria-current="page"{% endif %}>
-                            <span class="nav-icon" aria-hidden="true">◇</span> Trust & compliance
-                        </a>
-                    {% endif %}
-                    <p class="nav-label nav-section">Build</p>
-                    {% if portal_role == 'owner' or portal_role == 'admin' or portal_role == 'developer' %}
-                        <a href="{% url 'portal:developers' %}"
-                           {% if request.resolver_match.url_name == 'developers' %}class="active" aria-current="page"{% endif %}>
-                            <span class="nav-icon" aria-hidden="true">&lt;/&gt;</span> Developers
-                        </a>
-                    {% endif %}
-                    <a href="{% url 'developer_docs' %}" target="_blank"><span class="nav-icon" aria-hidden="true">?</span> API documentation</a>
-                    <p class="nav-label nav-section">Account</p><a href="{% url 'portal:profile' %}"
-   {% if request.resolver_match.url_name == 'profile' %}class="active" aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">▣</span> Business profile</a>
-                    <a href="{% url 'portal:billing' %}" {% if request.resolver_match.url_name == 'billing' %}class="active" aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">◈</span> Billing &amp; plan</a>
-                    {% if request.user.is_staff %}
-                        <a href="/admin/">
-                            <span class="nav-icon" aria-hidden="true">⚙</span> Operations
-                        </a>
-                    {% endif %}
-                </nav>
-                <div class="sidebar-foot">
-                    <div class="environment"><span class="status-dot"></span> Platform operational</div>
-                    {% if merchant %}
-                        <div class="workspace-card">
-                            <span class="workspace-avatar">{{ merchant.display_name|first|upper }}</span>
-                            <span><strong>{{ merchant.display_name }}</strong><small>{{ portal_role|title }} · {{ merchant.merchant_code }}</small></span>
-                        </div>
-                        <form method="post" action="{% url 'logout' %}" class="logout-form">{% csrf_token %}<button type="submit"><span aria-hidden="true">↪</span> Sign out</button></form>
-                    {% endif %}
-                </div>
-            </aside>
-            <div class="page-shell">
-                <header class="mobile-header">
-                    <button class="icon-button"
-                            type="button"
-                            data-open-menu
-                            aria-label="Open menu">☰</button>
-                    <a class="brand compact" href="{% url 'portal:dashboard' %}"><span class="brand-mark">A</span> Amato<span>Pay</span></a>
-                </header>
-                <main id="main-content" tabindex="-1">
-                    {% if messages %}<div class="portal-messages">{% for message in messages %}<div class="portal-message portal-message-{{ message.tags|default:'info' }}">{{ message }}</div>{% endfor %}</div>{% endif %}
-                    {% block content %}{% endblock %}
-                </main>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#071c27">
+    <title>{% block title %}AmatoPay{% endblock %}</title>
+    <link rel="icon" href="{% static 'portal/favicon.svg' %}" type="image/svg+xml">
+    <link rel="stylesheet" href="{% static 'portal/css/tailwind.css' %}">
+    <link rel="stylesheet" href="{% static 'portal/css/app.css' %}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="bg-slate-50 antialiased">
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    
+    <div class="app-shell" id="app-shell">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar" role="navigation" aria-label="Main navigation">
+            <div class="sidebar-head">
+                <a class="brand" href="{% url 'portal:dashboard' %}" aria-label="AmatoPay dashboard">
+                    <img src="{% static 'portal/logo.svg' %}" alt="AmatoPay Logo" class="h-8 w-auto">
+                </a>
+                <button class="icon-button sidebar-close md:hidden" type="button" data-close-menu aria-label="Close menu">
+                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
             </div>
+
+            <nav class="nav">
+                <!-- Workspace Section -->
+                <div class="nav-section">
+                    <p class="nav-label">Workspace</p>
+                    <a href="{% url 'portal:dashboard' %}" {% if request.resolver_match.url_name == 'dashboard' %}class="active" aria-current="page"{% endif %}>
+                        <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.44 1.152-.44 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+                        </svg>
+                        <span class="nav-text">Overview</span>
+                        {% if unread_notifications %}
+                        <span class="nav-badge">{{ unread_notifications }}</span>
+                        {% endif %}
+                    </a>
+                    <a href="{% url 'portal:payments' %}" {% if request.resolver_match.url_name == 'payments' or request.resolver_match.url_name == 'payment-detail' or request.resolver_match.url_name == 'payment-confirm-delivery' %}class="active" aria-current="page"{% endif %}>
+                        <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15A2.25 2.25 0 002.25 6.75v10.5A2.25 2.25 0 004.5 19.5z" />
+                        </svg>
+                        <span class="nav-text">Payments</span>
+                        {% if pending_payments_count %}
+                        <span class="nav-badge nav-badge-warning">{{ pending_payments_count }}</span>
+                        {% endif %}
+                    </a>
+                    <a href="{% url 'portal:settlements' %}" {% if request.resolver_match.url_name == 'settlements' %}class="active" aria-current="page"{% endif %}>
+                        <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span class="nav-text">Settlements</span>
+                    </a>
+                    <a href="{% url 'portal:refunds' %}" {% if request.resolver_match.url_name == 'refunds' %}class="active" aria-current="page"{% endif %}>
+                        <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+                        </svg>
+                        <span class="nav-text">Refunds</span>
+                    </a>
+                    <a href="{% url 'portal:trust' %}" {% if request.resolver_match.url_name == 'trust' %}class="active" aria-current="page"{% endif %}>
+                        <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.286zm0 13.036h.008v.008h-.008v-.008z" />
+                        </svg>
+                        <span class="nav-text">Trust & Compliance</span>
+                    </a>
+                </div>
+
+                <!-- Build Section -->
+                <div class="nav-section">
+                    <p class="nav-label">Build</p>
+                    <a href="{% url 'portal:developers' %}" {% if request.resolver_match.url_name == 'developers' %}class="active" aria-current="page"{% endif %}>
+                        <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" />
+                        </svg>
+                        <span class="nav-text">Developers</span>
+                    </a>
+                    <a href="{% url 'developer_docs' %}" target="_blank" rel="noopener noreferrer">
+                        <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
+                        </svg>
+                        <span class="nav-text">API Documentation</span>
+                        <span class="nav-badge nav-badge-external">↗</span>
+                    </a>
+                </div>
+
+                <!-- Account Section -->
+                <div class="nav-section">
+                    <p class="nav-label">Account</p>
+                    <a href="{% url 'portal:profile' %}" {% if request.resolver_match.url_name == 'profile' %}class="active" aria-current="page"{% endif %}>
+                        <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h6M9 11.25h6M9 15.75h6M9 20.25h6" />
+                        </svg>
+                        <span class="nav-text">Business Profile</span>
+                    </a>
+                    <a href="{% url 'portal:billing' %}" {% if request.resolver_match.url_name == 'billing' %}class="active" aria-current="page"{% endif %}>
+                        <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.879m0 0a3 3 0 104.243 4.243c1.052-1.052 1.052-2.76 0-3.812l-1.23-1.23h-2.828c-0.337 0-0.663-0.134-0.905-0.377S9 12.443 9 12V8.413c0-0.538.214-1.055.595-1.436L11 5.5m0 0L9.5 7h4.992c0.337 0 0.663 0.134 0.905 0.377s0.377 0.568 0.377 0.905v.894m0 0a3 3 0 114.243 4.243c-1.052 1.052-2.76 1.052-3.812 0l-1.23-1.23h-2.828c-0.337 0-0.663-0.134-0.905-0.377S9 12.443 9 12V8.413c0-0.538.214-1.055.595-1.436L11 5.5M12 6V4" />
+                        </svg>
+                        <span class="nav-text">Billing</span>
+                    </a>
+
+                    {% if request.user.is_staff %}
+                    <a href="/admin/" target="_blank" rel="noopener noreferrer">
+                        <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12a7.5 7.5 0 0015 0m-15 0a7.5 7.5 0 1115 0m-15 0H3m18 0h-1.5m-15 0h1.5m15 0h-1.5" />
+                        </svg>
+                        <span class="nav-text">Admin Panel</span>
+                        <span class="nav-badge nav-badge-admin">Admin</span>
+                    </a>
+                    {% endif %}
+                </div>
+            </nav>
+
+            <!-- Sidebar Footer -->
+            <div class="sidebar-foot">
+                <div class="status-indicator">
+                    <span class="status-dot status-dot-online"></span>
+                    <span class="status-text">Platform Operational</span>
+                </div>
+                <div class="sidebar-version text-xs text-slate-400 mt-2">
+                    v2.4.1
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <div class="page-shell">
+            <!-- Top Navigation Bar -->
+            <header class="sticky top-0 bg-white/80 backdrop-blur-xl z-10 border-b border-slate-200/80">
+                <div class="mx-auto px-4 sm:px-6 lg:px-8">
+                    <div class="flex items-center justify-between h-16">
+                        <div class="flex items-center gap-4 min-w-0">
+                            <button class="icon-button md:hidden" type="button" data-open-menu id="sidebar-toggle-button" aria-label="Toggle sidebar">
+                                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                                </svg>
+                            </button>
+                            <div class="flex items-center gap-3 min-w-0">
+                                <h1 class="text-lg sm:text-xl font-semibold text-slate-900 truncate">{% block page_title %}Dashboard{% endblock %}</h1>
+                                {% block page_actions %}{% endblock %}
+                            </div>
+                        </div>
+
+                        <!-- Right Side Actions -->
+                        <div class="flex items-center gap-2 sm:gap-4">
+                            <!-- Notification Bell -->
+                            <button class="relative p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition-colors" aria-label="Notifications">
+                                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                                </svg>
+                                {% if unread_notifications %}
+                                <span class="absolute top-1.5 right-1.5 h-2.5 w-2.5 bg-red-500 rounded-full ring-2 ring-white"></span>
+                                {% endif %}
+                            </button>
+
+                            <!-- User Profile -->
+                            {% if merchant %}
+                            <div class="relative" id="profile-menu">
+                                <button type="button" id="profile-menu-button" class="flex items-center gap-2 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 hover:bg-slate-50 p-1 transition-colors" aria-expanded="false" aria-haspopup="true">
+                                    <span class="workspace-avatar h-9 w-9">
+                                        {{ merchant.display_name|first|upper }}
+                                    </span>
+                                    <div class="hidden sm:flex flex-col items-start">
+                                        <span class="text-sm font-semibold text-slate-700">{{ merchant.display_name }}</span>
+                                        <span class="text-xs text-slate-500">{{ merchant.merchant_code }}</span>
+                                    </div>
+                                    <svg class="hidden sm:block h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </button>
+
+                                <!-- Dropdown Menu -->
+                                <div id="profile-menu-dropdown" class="profile-dropdown origin-top-right absolute right-0 mt-2 w-56 rounded-xl shadow-lg py-1 bg-white/90 backdrop-blur-lg ring-1 ring-black/5 focus:outline-none hidden" role="menu" aria-orientation="vertical" aria-labelledby="profile-menu-button" tabindex="-1">
+                                    <div class="px-4 py-3 border-b border-slate-100">
+                                        <p class="text-sm font-medium text-slate-900">{{ merchant.display_name }}</p>
+                                        <p class="text-xs text-slate-500 truncate">{{ merchant.email }}</p>
+                                    </div>
+                                    <a href="{% url 'portal:profile' %}" class="block px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 hover:text-indigo-600 transition-colors" role="menuitem" tabindex="-1">
+                                        <span class="inline-flex items-center gap-2">
+                                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                            </svg>
+                                            Profile Settings
+                                        </span>
+                                    </a>
+                                    <form method="post" action="{% url 'logout' %}">
+                                        {% csrf_token %}
+                                        <button type="submit" class="w-full text-left block px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors" role="menuitem" tabindex="-1">
+                                            <span class="inline-flex items-center gap-2">
+                                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                                </svg>
+                                                Sign Out
+                                            </span>
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Main Content -->
+            <main id="main-content" tabindex="-1" class="p-4 sm:p-6 lg:p-8">
+                <!-- Messages -->
+                {% if messages %}
+                <div class="portal-messages space-y-3 mb-6">
+                    {% for message in messages %}
+                    <div class="portal-message portal-message-{{ message.tags|default:'info' }} flex items-center justify-between p-4 rounded-lg shadow-sm">
+                        <span class="flex items-center gap-2">{{ message }}</span>
+                        <button class="text-slate-400 hover:text-slate-600" onclick="this.parentElement.remove()">
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                {% block content %}{% endblock %}
+            </main>
         </div>
-        <div class="scrim" data-close-menu></div>
-        <div class="tw-toast" role="status" aria-live="polite" data-toast><span aria-hidden="true">✓</span><span data-toast-message>Done</span></div>
-        <script src="{% static 'portal/js/app.js' %}" defer></script>
-    </body>
+    </div>
+
+    <!-- Overlay Scrim -->
+    <div class="scrim" data-close-menu></div>
+
+    <!-- Toast Notification -->
+    <div class="tw-toast" role="status" aria-live="polite" data-toast>
+        <span aria-hidden="true">✓</span>
+        <span data-toast-message>Done</span>
+    </div>
+
+    <script src="{% static 'portal/js/app.js' %}" defer></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Sidebar toggle with localStorage
+            const appShell = document.getElementById('app-shell');
+            const toggleButton = document.getElementById('sidebar-toggle-button');
+            const sidebarState = localStorage.getItem('sidebarState');
+
+            if (sidebarState === 'collapsed' && window.innerWidth >= 1024) {
+                appShell.classList.add('sidebar-collapsed');
+            }
+
+            if (toggleButton) {
+                toggleButton.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    // Desktop expand/collapse
+                    if (window.innerWidth >= 1024) {
+                        appShell.classList.toggle('sidebar-collapsed');
+                        localStorage.setItem('sidebarState', 
+                            appShell.classList.contains('sidebar-collapsed') ? 'collapsed' : 'expanded'
+                        );
+                    }
+                });
+            }
+
+            // Close sidebar on escape key
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && !appShell.classList.contains('sidebar-collapsed') && window.innerWidth < 1024) {
+                    document.querySelector('[data-close-menu]')?.click();
+                }
+            });
+
+            // Profile dropdown
+            const profileMenu = document.getElementById('profile-menu');
+            if (profileMenu) {
+                const profileMenuButton = document.getElementById('profile-menu-button');
+                const profileMenuDropdown = document.getElementById('profile-menu-dropdown');
+
+                profileMenuButton.addEventListener('click', function(event) {
+                    event.stopPropagation();
+                    const isExpanded = profileMenuButton.getAttribute('aria-expanded') === 'true';
+                    profileMenuButton.setAttribute('aria-expanded', !isExpanded);
+                    profileMenuDropdown.classList.toggle('hidden');
+                });
+
+                // Close dropdown when clicking outside
+                document.addEventListener('click', function(event) {
+                    if (!profileMenu.contains(event.target)) {
+                        profileMenuButton.setAttribute('aria-expanded', 'false');
+                        profileMenuDropdown.classList.add('hidden');
+                    }
+                });
+
+                // Close dropdown on escape
+                profileMenu.addEventListener('keydown', function(e) {
+                    if (e.key === 'Escape') {
+                        profileMenuButton.setAttribute('aria-expanded', 'false');
+                        profileMenuDropdown.classList.add('hidden');
+                        profileMenuButton.focus();
+                    }
+                });
+            }
+
+            // Auto-dismiss messages after 5 seconds
+            document.querySelectorAll('.portal-message').forEach(function(message) {
+                setTimeout(function() {
+                    message.style.opacity = '0';
+                    message.style.transform = 'translateY(-10px)';
+                    setTimeout(function() {
+                        message.remove();
+                    }, 300);
+                }, 5000);
+            });
+        });
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
 </html>

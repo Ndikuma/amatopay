@@ -1,14 +1,14 @@
 from django.contrib import admin
 from django.conf import settings
+from django.conf.urls.static import static
 from django.urls import include, path
 from django.views.generic import RedirectView
 from django.contrib.auth import views as auth_views
 
 from apps.portal.public_views import docs, home, pay
 from apps.merchants.public_views import apply as merchant_apply, received as merchant_received
-from apps.deliveries.public_views import customer_delivery, delivery_lookup
 from config.health import live, ready
-
+from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 API_PREFIX = "api/v1/"
 
 urlpatterns = [
@@ -19,7 +19,6 @@ urlpatterns = [
         RedirectView.as_view(url="/static/portal/favicon.svg", permanent=True),
     ),
     path("", home, name="home"),
-    path("", include("apps.billing.public_urls")),
     path("merchants/apply/", merchant_apply, name="merchant_application"),
     path("merchants/apply/received/", merchant_received, name="merchant_application_received"),
     path("developers/", docs, name="developer_docs"),
@@ -66,27 +65,13 @@ urlpatterns = [
     path("security/", include("apps.security.urls")),
     path("dashboard/", include("apps.portal.urls")),
     path("pay/<uuid:session_id>/", pay, name="hosted_checkout"),
-    path("deliveries/", delivery_lookup, name="delivery_lookup"),
-    path(
-        "deliveries/<str:reference>/",
-        customer_delivery,
-        name="customer_delivery",
-    ),
     path(f"{API_PREFIX}checkout/", include("apps.checkout.urls")),
-    path(API_PREFIX, include("apps.billing.urls")),
     path(f"{API_PREFIX}payments/", include("apps.payments.urls")),
-    path(f"{API_PREFIX}settlements/", include("apps.settlements.urls")),
-    path(f"{API_PREFIX}checkout/", include("apps.checkout.public_urls")),
+    path("billing/", include("apps.billing.urls")),
+    path("billing/", include("apps.billing.public_urls")),
 ]
 
-if settings.DEBUG:
-    from drf_spectacular.views import (
-        SpectacularAPIView,
-        SpectacularRedocView,
-        SpectacularSwaggerView,
-    )
-
-    urlpatterns += [
+urlpatterns += [
         path("api/schema/", SpectacularAPIView.as_view(), name="api_schema"),
         path(
             "api/docs/",
@@ -97,5 +82,8 @@ if settings.DEBUG:
             "api/redoc/",
             SpectacularRedocView.as_view(url_name="api_schema"),
             name="redoc",
-        ),
-    ]
+        ),]
+
+if settings.DEBUG:
+    # This allows Django's development server to serve static files.
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

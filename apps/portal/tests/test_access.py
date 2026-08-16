@@ -34,9 +34,9 @@ class PortalAccessTests(TestCase):
     def test_public_pages_are_available(self):
         home = self.client.get("/")
         self.assertEqual(home.status_code, 200)
-        self.assertContains(home, "Start an investigation")
-        self.assertContains(home, "funds stay protected")
-        self.assertContains(home, 'href="/deliveries/"')
+        self.assertContains(home, "Payments made")
+        self.assertContains(home, "beautifully simple")
+        self.assertContains(home, 'href="#contact"')
         self.assertEqual(self.client.get("/developers/").status_code, 200)
         self.assertEqual(self.client.get("/account/sign-in/").status_code, 200)
 

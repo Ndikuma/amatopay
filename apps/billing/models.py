@@ -1,9 +1,8 @@
 import uuid
-
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
-
+from decimal import Decimal
 from apps.core.models import TimeStampedModel, UUIDModel
 
 
@@ -33,18 +32,7 @@ class PricingPlan(UUIDModel, TimeStampedModel):
         blank=True,
         help_text="Percentage fee per transaction for pay-as-you-go plans.",
     )
-    extension_price = models.DecimalField(
-        max_digits=20,
-        decimal_places=2,
-        null=True,
-        blank=True,
-        help_text="Price for a transaction extension pack.",
-    )
-    extension_transactions = models.PositiveIntegerField(
-        null=True,
-        blank=True,
-        help_text="Number of extra transactions in an extension pack.",
-    )
+
     currency = models.CharField(max_length=3, default="BIF")
     active = models.BooleanField(default=True)
 
@@ -182,52 +170,3 @@ class PlanRequest(UUIDModel, TimeStampedModel):
 
     def __str__(self):
         return f"{self.reference} — {self.plan} ({self.status})"
-
-
-class PlanExtensionOrder(UUIDModel, TimeStampedModel):
-    """Records a merchant's purchase of an extension transaction pack via RTP."""
-
-    class Status(models.TextChoices):
-        PENDING = "pending", "Pending payment"
-        PAID = "paid", "Paid"
-        FAILED = "failed", "Failed"
-        CANCELLED = "cancelled", "Cancelled"
-
-    reference = models.CharField(max_length=64, unique=True, editable=False)
-    assignment = models.ForeignKey(
-        MerchantPlanAssignment,
-        on_delete=models.PROTECT,
-        related_name="extension_orders",
-    )
-    plan = models.ForeignKey(
-        PricingPlan,
-        on_delete=models.PROTECT,
-        related_name="extension_orders",
-    )
-    extra_transactions = models.PositiveIntegerField()
-    amount = models.DecimalField(max_digits=20, decimal_places=2)
-    currency = models.CharField(max_length=3, default="BIF")
-    status = models.CharField(
-        max_length=20, choices=Status.choices, default=Status.PENDING
-    )
-    # RTP provider reference once payment is initiated
-    provider_reference = models.CharField(max_length=120, blank=True, db_index=True)
-    paid_at = models.DateTimeField(null=True, blank=True)
-    initiated_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.PROTECT,
-        null=True,
-        blank=True,
-        related_name="billing_extension_orders",
-    )
-
-    class Meta:
-        ordering = ["-created_at"]
-
-    def save(self, *args, **kwargs):
-        if not self.reference:
-            self.reference = "AMP-EXT-" + uuid.uuid4().hex[:16].upper()
-        super().save(*args, **kwargs)
-
-    def __str__(self):
-        return f"{self.reference} — {self.extra_transactions} txn ({self.status})"

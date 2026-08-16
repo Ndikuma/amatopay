@@ -1,474 +1,234 @@
-{% load static humanize %}
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Pricing · AmatoPay</title>
-    <link rel="icon" href="{% static 'portal/favicon.svg' %}">
-    <link rel="stylesheet" href="{% static 'checkout/css/pay.css' %}">
-    <style>
-        :root {
-            --navy: #071c27;
-            --navy-soft: #103442;
-            --teal: #0d9488;
-            --mint: #5eead4;
-            --ink: #17272f;
-            --muted: #6f7f86;
-            --line: #dce5e7;
-            --canvas: #f2f7f7;
-        }
-        * { box-sizing: border-box; }
-        body { margin: 0; background: var(--canvas); color: var(--ink); font: 14px/1.5 Inter, ui-sans-serif, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+{% extends "base_public.html" %}
 
-        /* ── Topbar ── */
-        .topbar {
-            position: sticky; top: 0; z-index: 10;
-            display: flex; align-items: center; justify-content: space-between;
-            height: 60px; padding: 0 40px;
-            background: var(--navy);
-            backdrop-filter: blur(8px);
-        }
-        .topbar-brand { display: flex; align-items: center; gap: 10px; color: #fff; font-size: 18px; font-weight: 800; letter-spacing: -.03em; text-decoration: none; }
-        .topbar-brand .mark { display: grid; width: 30px; height: 30px; place-items: center; border-radius: 8px; background: var(--mint); color: var(--navy); font-weight: 900; font-size: 15px; }
-        .topbar-brand span { color: var(--mint); }
-        .topbar-nav { display: flex; align-items: center; gap: 8px; }
-        .topbar-nav a { padding: 7px 14px; border-radius: 7px; color: rgba(255,255,255,.65); font-size: 12px; font-weight: 700; text-decoration: none; transition: background .15s, color .15s; }
-        .topbar-nav a:hover { background: rgba(255,255,255,.08); color: #fff; }
-        .topbar-nav a.cta { background: var(--teal); color: #fff; }
-        .topbar-nav a.cta:hover { opacity: .9; }
+{% block title %}Pricing Plans - AmatoPay{% endblock %}
 
-        /* ── Hero ── */
-        .hero {
-            background: var(--navy);
-            padding: 72px 24px 80px;
-            text-align: center;
-            position: relative;
-            overflow: hidden;
-        }
-        .hero::before {
-            content: '';
-            position: absolute; inset: 0;
-            background: radial-gradient(ellipse 70% 60% at 50% 110%, rgba(13,148,136,.18) 0%, transparent 70%);
-        }
-        .hero-eyebrow {
-            display: inline-flex; align-items: center; gap: 7px;
-            padding: 5px 12px; border-radius: 999px;
-            border: 1px solid rgba(94,234,212,.25);
-            color: var(--mint); font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase;
-            margin-bottom: 20px; position: relative;
-        }
-        .hero h1 {
-            position: relative;
-            margin: 0 0 16px;
-            font-size: clamp(32px, 5vw, 52px);
-            font-weight: 900; letter-spacing: -.04em; line-height: 1.1;
-            color: #fff;
-        }
-        .hero h1 span { color: var(--mint); }
-        .hero p {
-            position: relative;
-            max-width: 520px; margin: 0 auto 32px;
-            color: rgba(255,255,255,.55); font-size: 15px; line-height: 1.65;
-        }
-        .hero-actions { position: relative; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
-        .hero-actions a {
-            padding: 12px 24px; border-radius: 9px;
-            font-size: 13px; font-weight: 750; text-decoration: none;
-            transition: transform .15s, opacity .15s;
-        }
-        .hero-actions a:hover { transform: translateY(-1px); opacity: .9; }
-        .hero-actions .btn-primary { background: var(--teal); color: #fff; }
-        .hero-actions .btn-ghost { border: 1px solid rgba(255,255,255,.2); color: rgba(255,255,255,.75); }
-
-        /* ── Toggle ── */
-        .billing-toggle {
-            display: flex; align-items: center; justify-content: center; gap: 0;
-            margin: 40px auto 0; width: fit-content;
-            background: rgba(255,255,255,.07); border-radius: 10px; padding: 4px;
-            position: relative;
-        }
-        .billing-toggle button {
-            padding: 7px 20px; border: 0; border-radius: 7px;
-            background: transparent; color: rgba(255,255,255,.5);
-            font-size: 12px; font-weight: 700; cursor: pointer;
-            transition: background .2s, color .2s;
-        }
-        .billing-toggle button.active { background: var(--teal); color: #fff; }
-
-        /* ── Plans grid ── */
-        .plans-section { max-width: 1160px; margin: 0 auto; padding: 56px 24px 80px; }
-        .plans-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 18px;
-        }
-        .plan-card {
-            position: relative;
-            display: flex; flex-direction: column;
-            background: #fff;
-            border: 1.5px solid var(--line);
-            border-radius: 16px;
-            padding: 28px 24px 24px;
-            transition: box-shadow .2s, transform .2s;
-        }
-        .plan-card:hover { box-shadow: 0 12px 40px rgba(7,28,39,.1); transform: translateY(-2px); }
-        .plan-card.popular {
-            border-color: var(--teal);
-            box-shadow: 0 0 0 3px rgba(13,148,136,.12), 0 16px 48px rgba(7,28,39,.1);
-        }
-        .popular-badge {
-            position: absolute; top: -13px; left: 50%; transform: translateX(-50%);
-            padding: 4px 14px; border-radius: 999px;
-            background: var(--teal); color: #fff;
-            font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
-            white-space: nowrap;
-        }
-        .plan-card-head { margin-bottom: 20px; }
-        .plan-icon {
-            display: grid; width: 40px; height: 40px; place-items: center;
-            border-radius: 11px; background: #edf9f7; color: var(--teal);
-            font-size: 18px; font-weight: 900; margin-bottom: 14px;
-        }
-        .plan-card h2 { margin: 0 0 4px; font-size: 18px; font-weight: 800; letter-spacing: -.02em; }
-        .plan-card .plan-tagline { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
-
-        .plan-price { margin: 20px 0; padding: 16px 0; border-block: 1px solid #f0f4f4; }
-        .plan-price-amount { display: flex; align-items: baseline; gap: 4px; }
-        .plan-price-amount strong { font-size: 28px; font-weight: 900; letter-spacing: -.04em; color: var(--navy); }
-        .plan-price-amount span { color: var(--muted); font-size: 12px; }
-        .plan-price-sub { margin-top: 5px; color: var(--muted); font-size: 11px; }
-        .plan-price-sub b { color: var(--teal); font-weight: 750; }
-
-        .plan-features-list { list-style: none; margin: 0 0 24px; padding: 0; flex: 1; }
-        .plan-features-list li {
-            display: flex; align-items: flex-start; gap: 9px;
-            padding: 6px 0; border-bottom: 1px solid #f4f7f7;
-            font-size: 12px; color: #3a5560;
-        }
-        .plan-features-list li:last-child { border-bottom: 0; }
-        .plan-features-list li .check {
-            flex: 0 0 16px; width: 16px; height: 16px;
-            display: grid; place-items: center;
-            border-radius: 50%; background: #e0f7f3; color: var(--teal);
-            font-size: 8px; font-weight: 900; margin-top: 2px;
-        }
-
-        .plan-ext-badge {
-            display: flex; align-items: center; gap: 8px;
-            padding: 9px 12px; border-radius: 9px;
-            background: #f5fffe; border: 1px solid #c8ede9;
-            margin-bottom: 16px; font-size: 11px;
-        }
-        .plan-ext-badge .ext-icon { color: var(--teal); font-size: 14px; }
-        .plan-ext-badge strong { display: block; color: var(--navy); font-size: 11px; }
-        .plan-ext-badge span { color: var(--muted); font-size: 10px; }
-
-        .plan-cta {
-            display: block; width: 100%; padding: 12px;
-            border: 1.5px solid var(--navy); border-radius: 9px;
-            background: transparent; color: var(--navy);
-            font-size: 12px; font-weight: 750; text-align: center;
-            text-decoration: none; cursor: pointer;
-            transition: background .15s, color .15s;
-        }
-        .plan-cta:hover { background: var(--navy); color: #fff; }
-        .plan-card.popular .plan-cta { background: var(--teal); border-color: var(--teal); color: #fff; }
-        .plan-card.popular .plan-cta:hover { opacity: .9; }
-
-        .payg-card {
-            grid-column: 1 / -1;
-            display: grid; grid-template-columns: 1fr 1fr 1fr auto;
-            align-items: center; gap: 24px;
-            background: var(--navy); color: #fff;
-            border-color: transparent;
-            padding: 28px 32px;
-        }
-        .payg-card:hover { transform: none; box-shadow: 0 8px 32px rgba(7,28,39,.18); }
-        .payg-card h2 { color: #fff; margin: 0 0 4px; }
-        .payg-card .plan-tagline { color: rgba(255,255,255,.55); }
-        .payg-card .plan-price { border-color: rgba(255,255,255,.1); margin: 0; padding: 0; }
-        .payg-card .plan-price-amount strong { color: #fff; }
-        .payg-card .plan-price-sub { color: rgba(255,255,255,.45); }
-        .payg-card .plan-features-list { margin: 0; }
-        .payg-card .plan-features-list li { color: rgba(255,255,255,.7); border-color: rgba(255,255,255,.08); }
-        .payg-card .plan-features-list li .check { background: rgba(94,234,212,.15); color: var(--mint); }
-        .payg-card .plan-cta { border-color: rgba(255,255,255,.3); color: rgba(255,255,255,.85); }
-        .payg-card .plan-cta:hover { background: rgba(255,255,255,.1); color: #fff; }
-
-        /* ── Compare table ── */
-        .compare-section { max-width: 1000px; margin: 0 auto; padding: 0 24px 80px; }
-        .compare-section h2 { font-size: 24px; font-weight: 800; letter-spacing: -.03em; margin: 0 0 24px; text-align: center; }
-        .compare-wrap { background: #fff; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
-        .compare-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-        .compare-table thead th {
-            padding: 14px 18px; background: var(--navy);
-            color: rgba(255,255,255,.55); font-size: 10px; font-weight: 700;
-            text-transform: uppercase; letter-spacing: .07em; text-align: left;
-        }
-        .compare-table thead th:first-child { color: rgba(255,255,255,.35); }
-        .compare-table tbody tr { border-bottom: 1px solid #f0f4f4; }
-        .compare-table tbody tr:last-child { border-bottom: 0; }
-        .compare-table tbody tr:hover { background: #fafcfc; }
-        .compare-table td { padding: 13px 18px; color: #3a5560; vertical-align: middle; }
-        .compare-table td:first-child { font-weight: 700; color: var(--navy); }
-        .compare-table .tick { color: var(--teal); font-weight: 900; }
-        .compare-table .dash { color: #c5d2d5; }
-        .compare-table .highlight { background: rgba(13,148,136,.04); }
-
-        /* ── FAQ / CTA ── */
-        .cta-section {
-            background: var(--navy); color: #fff;
-            text-align: center; padding: 72px 24px;
-        }
-        .cta-section h2 { margin: 0 0 12px; font-size: clamp(24px, 3vw, 36px); font-weight: 900; letter-spacing: -.03em; }
-        .cta-section p { margin: 0 auto 28px; max-width: 480px; color: rgba(255,255,255,.55); font-size: 14px; }
-        .cta-section .cta-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
-        .cta-section .cta-actions a {
-            padding: 13px 26px; border-radius: 9px;
-            font-size: 13px; font-weight: 750; text-decoration: none;
-            transition: opacity .15s;
-        }
-        .cta-section .cta-actions a:hover { opacity: .88; }
-        .cta-section .btn-primary { background: var(--teal); color: #fff; }
-        .cta-section .btn-ghost { border: 1px solid rgba(255,255,255,.2); color: rgba(255,255,255,.75); }
-
-        .site-footer {
-            padding: 24px 40px; border-top: 1px solid var(--line);
-            display: flex; align-items: center; justify-content: space-between;
-            color: var(--muted); font-size: 11px;
-        }
-        .site-footer a { color: var(--teal); text-decoration: none; font-weight: 700; }
-
-        @media (max-width: 900px) {
-            .payg-card { grid-template-columns: 1fr 1fr; }
-            .payg-card .plan-cta { grid-column: 1 / -1; }
-        }
-        @media (max-width: 900px) {
-            .topbar-nav a:not(.cta):not(:last-of-type) { display: none; }
-            .plans-grid { grid-template-columns: repeat(2, 1fr); }
-        }
-        @media (max-width: 640px) {
-            .topbar { padding: 0 18px; }
-            .plans-section, .compare-section { padding-inline: 16px; }
-            .plans-grid { grid-template-columns: 1fr; }
-            .payg-card { grid-template-columns: 1fr; padding: 22px 20px; }
-            .site-footer { flex-direction: column; gap: 8px; text-align: center; }
-        }
-    </style>
-</head>
-<body>
-
-<nav class="topbar">
-    <a class="topbar-brand" href="/">
-        <span class="mark">A</span>
-        Amato<span>Pay</span>
-    </a>
-    <div class="topbar-nav">
-        <a href="{% url 'billing_public:plan_list' %}">Plans</a>
-        <a href="{% url 'developer_docs' %}">Developers</a>
-        <a href="{% url 'delivery_lookup' %}">Find a payment</a>
-        <a href="{% url 'merchant_application' %}">Become a merchant</a>
-        <a href="{% url 'login' %}" class="cta">Sign in →</a>
-    </div>
-</nav>
-
-<section class="hero">
-    <div class="hero-eyebrow">◈ Transparent pricing</div>
-    <h1>Simple plans for every<br><span>Burundian merchant</span></h1>
-    <p>One integration. Predictable monthly pricing. 0% per-transaction fees on contracted plans. All prices in BIF.</p>
-    <div class="hero-actions">
-        <a href="{% url 'merchant_application' %}" class="btn-primary">Start your application →</a>
-        <a href="mailto:support@amatotech.com?subject=AmatoPay plan" class="btn-ghost">Talk to sales</a>
-    </div>
-</section>
-
-<section class="plans-section">
-    <div class="plans-grid">
-        {% for plan in plans %}
-        {% if plan.code != "pay-as-you-go" %}
-        <div class="plan-card {% if plan.code == 'business' %}popular{% endif %}">
-            {% if plan.code == 'business' %}<div class="popular-badge">Most popular</div>{% endif %}
-            <div class="plan-card-head">
-                <div class="plan-icon">
-                    {% if plan.code == 'starter' %}◇
-                    {% elif plan.code == 'standard' %}◈
-                    {% elif plan.code == 'business' %}⬡
-                    {% elif plan.code == 'business-plus' %}⬢
-                    {% elif plan.code == 'premium' %}✦
-                    {% elif plan.code == 'enterprise' %}⬟
-                    {% elif plan.code == 'unlimited' %}∞
-                    {% else %}◈{% endif %}
-                </div>
-                <h2>{{ plan.name }}</h2>
-                <p class="plan-tagline">{{ plan.description }}</p>
+{% block content %}
+<div class="bg-white">
+    <div class="container mx-auto py-16 px-4 sm:px-6 lg:px-8">
+        <!-- Header Section -->
+        <div class="text-center mb-12">
+            <span class="inline-block bg-indigo-500/10 text-indigo-400 text-sm font-semibold px-4 py-1 rounded-full mb-4">
+                Flexible Pricing
+            </span>
+            <h1 class="text-4xl sm:text-5xl font-extrabold text-slate-900">
+                Choose the perfect plan for your 
+                <span class="text-indigo-400">business</span>
+            </h1>
+            <p class="text-xl text-slate-600 dark:text-slate-300 mt-4 max-w-2xl mx-auto">
+                Start with what you need, scale as you grow. All plans include core payment features.
+            </p>
+            
+            <!-- Toggle between monthly/annual? Optional -->
+            <div class="mt-8 flex justify-center items-center gap-4">
+                <span class="text-sm font-medium text-slate-300">Monthly</span>
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" value="" class="sr-only peer" id="billingToggle">
+                    <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer bg-slate-200 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all border-slate-300 peer-checked:bg-indigo-600"></div>
+                </label>
+                <span class="text-sm font-medium text-slate-300">Annual <span class="text-emerald-400 text-xs font-bold ml-1">Save 20%</span></span>
             </div>
+        </div>
 
-            <div class="plan-price">
-                <div class="plan-price-amount">
+        <!-- Plan Cards Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {% for plan in plans %}
+            <div class="relative bg-white rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 flex flex-col {% if plan.code == 'standard' or plan.code == 'business' %}lg:scale-105 lg:shadow-2xl{% endif %} border border-slate-200 hover:border-indigo-300">
+                
+                <!-- Popular Badge -->
+                {% if plan.code == 'standard' %}
+                <div class="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
+                    <span class="bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-wider shadow-lg">
+                        Most Popular
+                    </span>
+                </div>
+                {% endif %}
+                
+                {% if plan.code == 'business-plus' %}
+                <div class="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
+                    <span class="bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-wider shadow-lg">
+                        Best Value
+                    </span>
+                </div>
+                {% endif %}
+
+                <!-- Card Header -->
+                <div class="p-6 pb-0 flex flex-col items-center text-center border-b border-slate-100">
+                    <div class="w-14 h-14 rounded-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center mb-3 text-indigo-400">
+                        {% if plan.code == 'starter' %}
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        {% elif plan.code == 'standard' %}
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+                        {% elif plan.code == 'business' %}
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                        {% elif plan.code == 'business-plus' %}
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
+                        {% elif plan.code == 'premium' %}
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
+                        {% elif plan.code == 'enterprise' %}
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                        {% elif plan.code == 'unlimited' %}
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+                        {% elif plan.code == 'pay-as-you-go' %}
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H4a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
+                        {% endif %}
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-900 dark:text-white">{{ plan.name }}</h3>
+                    <p class="text-sm text-slate-500 mt-1 line-clamp-2 min-h-[2.5rem]">{{ plan.description }}</p>
+                </div>
+
+                <!-- Price Section -->
+                <div class="p-6 text-center border-b border-slate-100 bg-slate-50">
                     {% if plan.monthly_price is not None %}
-                        <strong>{{ plan.monthly_price|floatformat:0|intcomma }}</strong>
-                        <span>{{ plan.currency }} / mo</span>
-                    {% else %}
-                        <strong>Custom</strong>
+                    <div class="flex items-center justify-center gap-1">
+                        <span class="text-4xl font-extrabold text-slate-900 dark:text-white">
+                            BIF {{ plan.monthly_price|floatformat:0 }}
+                        </span>
+                        <span class="text-sm font-medium text-slate-500 dark:text-slate-400">/mo</span>
+                    </div>
+                    {% if plan.included_transactions_per_month is not None %}
+                    <div class="mt-3 text-lg font-semibold text-indigo-600">
+                        {{ plan.included_transactions_per_month }} transactions included
+                    </div>
+                    {% if plan.transaction_fee_percentage %}
+                    <div class="mt-1 flex items-center justify-center gap-2">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                            +{{ plan.transaction_fee_percentage|floatformat:1 }}% transaction fee
+                        </span>
+                    </div>
+                    {% endif %} {# End of inner if plan.transaction_fee_percentage #}
+                    {% else %} {# plan.included_transactions_per_month is None #}
+                    <div class="mt-3 text-lg font-semibold text-emerald-600">
+                        Unlimited transactions
+                    </div>
+                    {% if plan.transaction_fee_percentage %}
+                    <div class="mt-1 flex items-center justify-center gap-2">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                            +{{ plan.transaction_fee_percentage|floatformat:1 }}% transaction fee
+                        </span>
+                    </div>
+                    {% endif %} {# End of inner if plan.transaction_fee_percentage #}
+                    {% endif %} {# End of if plan.included_transactions_per_month #}
+                    {% else %} {# plan.monthly_price is None #}
+                    <div class="text-2xl font-bold text-slate-900">Custom</div>
+                    <div class="text-sm text-slate-500">Contact us for pricing</div>
+                    {% endif %} {# End of if plan.monthly_price #}
+                    
+                    {% if plan.code == 'pay-as-you-go' %}
+                    <div class="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                        No monthly commitment
+                    </div>
                     {% endif %}
                 </div>
-                <p class="plan-price-sub">
-                    {% if plan.included_transactions_per_month %}
-                        <b>{{ plan.included_transactions_per_month|intcomma }} transactions</b> included · 0% fee
-                    {% elif plan.included_transactions_per_month is None %}
-                        <b>Unlimited transactions</b> · 0% fee
-                    {% else %}
-                        Pay-per-transaction model
-                    {% endif %}
-                </p>
-            </div>
 
-            {% if plan.extension_price and plan.extension_transactions %}
-            <div class="plan-ext-badge">
-                <span class="ext-icon">＋</span>
-                <div>
-                    <strong>+{{ plan.extension_transactions|intcomma }} extra transactions</strong>
-                    <span>{{ plan.extension_price|floatformat:0|intcomma }} {{ plan.currency }} per pack</span>
+                <!-- Features List -->
+                <div class="p-6 flex-grow">
+                    <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
+                        Features included
+                    </div>
+                    <ul class="space-y-2.5">
+                        {% for feature in plan.features|slice:":3" %} {# Display only the first 3 features #}
+                        <li class="flex items-start gap-2.5">
+                            <svg class="w-5 h-5 text-indigo-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            <span class="text-sm text-slate-700">{{ feature }}</span>
+                        </li>
+                        {% endfor %}
+                        {% if plan.features|length > 3 %}
+                        <li class="flex items-start gap-2.5 text-sm text-slate-500">
+                            + {{ plan.features|length|add:"-3" }} more features
+                        </li>
+                        {% endif %}
+                    </ul>
+                </div>
+
+                <!-- CTA Button -->
+                <div class="p-6 pt-0 mt-auto">
+                    <a href="{% url 'billing_public:request_plan' plan_id=plan.id %}" 
+                       class="block w-full text-center font-semibold rounded-xl py-3.5 text-sm transition-all duration-300 
+                       {% if plan.code == 'standard' or plan.code == 'business-plus' %}
+                           bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40
+                       {% elif plan.code == 'pay-as-you-go' %}
+                           bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50 border-2 border-emerald-200 dark:border-emerald-800
+                       {% else %}
+                           bg-slate-100 text-slate-800 hover:bg-slate-200 dark:bg-slate-700 dark:text-white dark:hover:bg-slate-600
+                       {% endif %}">
+                        {% if plan.monthly_price == 0 %}
+                            Start Free
+                        {% elif plan.monthly_price is None %}
+                            Contact Sales
+                        {% else %}
+                            Choose {{ plan.name }}
+                        {% endif %}
+                    </a>
+                    
+                    {% if plan.code != 'pay-as-you-go' and plan.monthly_price is not None %}
+                    <div class="mt-3 text-center">
+                        <span class="text-xs text-slate-400 dark:text-slate-500 group-hover:text-slate-400">
+                            <span class="font-medium text-slate-500 dark:text-slate-400"></span> Pay with Mobile Money
+                        </span>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
-            {% endif %}
+            {% endfor %}
+        </div>
 
-            <ul class="plan-features-list">
-                {% for feature in plan.features %}
-                <li><span class="check">✓</span>{{ feature }}</li>
-                {% endfor %}
-            </ul>
-
-            <a href="{% url 'login' %}?next={% url 'portal:plan-select' %}" class="plan-cta"
-               onclick="handlePlanCta(event, this)" data-plan="{{ plan.code }}">
-                Request this plan
+        <!-- Comparison Table Link -->
+        <div class="mt-20 text-center">
+            <a href="#" class="inline-flex items-center gap-2 text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium transition-colors">
+                <span>📊 View full plan comparison</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
             </a>
         </div>
-        {% endif %}
-        {% endfor %}
 
-        {% for plan in plans %}
-        {% if plan.code == "pay-as-you-go" %}
-        <div class="plan-card payg-card">
-            <div>
-                <h2>{{ plan.name }}</h2>
-                <p class="plan-tagline">{{ plan.description }}</p>
-            </div>
-            <div class="plan-price">
-                <div class="plan-price-amount">
-                    <strong>{{ plan.transaction_fee_percentage|floatformat:2 }}%</strong>
-                    <span>per transaction</span>
+        <!-- FAQ / Trust Section -->
+        <div class="mt-24 bg-slate-800/50 rounded-2xl p-8 border border-slate-700">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="text-center">
+                    <div class="text-3xl mb-2 text-indigo-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                    </div>
+                    <h4 class="font-semibold text-white">Secure & Compliant</h4>
+                    <p class="text-sm text-slate-400 mt-1">PCI-DSS compliant with 256-bit encryption</p>
                 </div>
-                <p class="plan-price-sub">No monthly commitment</p>
+                <div class="text-center">
+                    <div class="text-3xl mb-2 text-indigo-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                    </div>
+                    <h4 class="font-semibold text-white">Instant Activation</h4>
+                    <p class="text-sm text-slate-400 mt-1">Get started within minutes of plan selection</p>
+                </div>
+                <div class="text-center">
+                    <div class="text-3xl mb-2 text-indigo-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
+                    </div>
+                    <h4 class="font-semibold text-white">24/7 Support</h4>
+                    <p class="text-sm text-slate-400 mt-1">Dedicated support for all paid plans</p>
+                </div>
             </div>
-            <ul class="plan-features-list">
-                {% for feature in plan.features %}
-                <li><span class="check">✓</span>{{ feature }}</li>
-                {% endfor %}
-            </ul>
-            <a href="{% url 'login' %}?next={% url 'portal:plan-select' %}" class="plan-cta"
-               onclick="handlePlanCta(event, this)" data-plan="pay-as-you-go">Get started free</a>
-        </div>
-        {% endif %}
-        {% endfor %}
-    </div>
-</section>
-
-<section class="compare-section">
-    <h2>Compare all plans</h2>
-    <div class="compare-wrap">
-        <div style="overflow-x:auto;">
-            <table class="compare-table">
-                <thead>
-                    <tr>
-                        <th>Feature</th>
-                        {% for plan in plans %}{% if plan.code != 'pay-as-you-go' %}<th>{{ plan.name }}</th>{% endif %}{% endfor %}
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>Monthly price (BIF)</td>
-                        {% for plan in plans %}{% if plan.code != 'pay-as-you-go' %}
-                        <td {% if plan.code == 'business' %}class="highlight"{% endif %}>
-                            {% if plan.monthly_price is not None %}{{ plan.monthly_price|floatformat:0|intcomma }}{% else %}Custom{% endif %}
-                        </td>
-                        {% endif %}{% endfor %}
-                    </tr>
-                    <tr>
-                        <td>Included transactions / mo</td>
-                        {% for plan in plans %}{% if plan.code != 'pay-as-you-go' %}
-                        <td {% if plan.code == 'business' %}class="highlight"{% endif %}>
-                            {% if plan.included_transactions_per_month %}{{ plan.included_transactions_per_month|intcomma }}
-                            {% elif plan.included_transactions_per_month is None %}<span class="tick">∞</span>
-                            {% else %}—{% endif %}
-                        </td>
-                        {% endif %}{% endfor %}
-                    </tr>
-                    <tr>
-                        <td>Transaction fee</td>
-                        {% for plan in plans %}{% if plan.code != 'pay-as-you-go' %}
-                        <td {% if plan.code == 'business' %}class="highlight"{% endif %}>
-                            {% if plan.transaction_fee_percentage %}{{ plan.transaction_fee_percentage|floatformat:2 }}%{% else %}<span class="tick">0%</span>{% endif %}
-                        </td>
-                        {% endif %}{% endfor %}
-                    </tr>
-                    <tr>
-                        <td>Extension pack</td>
-                        {% for plan in plans %}{% if plan.code != 'pay-as-you-go' %}
-                        <td {% if plan.code == 'business' %}class="highlight"{% endif %}>
-                            {% if plan.extension_transactions %}<span class="tick">+{{ plan.extension_transactions|intcomma }}</span>{% else %}<span class="dash">—</span>{% endif %}
-                        </td>
-                        {% endif %}{% endfor %}
-                    </tr>
-                    {% for feat in compare_features %}
-                    <tr>
-                        <td>{{ feat }}</td>
-                        {% for plan in plans %}{% if plan.code != 'pay-as-you-go' %}
-                        <td {% if plan.code == 'business' %}class="highlight"{% endif %}>
-                            {% if feat in plan.features %}<span class="tick">✓</span>{% else %}<span class="dash">—</span>{% endif %}
-                        </td>
-                        {% endif %}{% endfor %}
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
         </div>
     </div>
-</section>
+</div>
 
-<section class="cta-section">
-    <h2>Ready to start accepting payments?</h2>
-    <p>Apply for a merchant account today. Our team reviews applications within 2 business days.</p>
-    <div class="cta-actions">
-        <a href="{% url 'merchant_application' %}" class="btn-primary">Apply now — it's free</a>
-        <a href="mailto:support@amatotech.com" class="btn-ghost">Contact sales</a>
-    </div>
-</section>
-
-<footer class="site-footer">
-    <span>© 2025 Amato Tech · AmatoPay Gateway</span>
-    <span>Plan assignments are contractual. <a href="mailto:support@amatotech.com?subject=AmatoPay plan request">Contact Support</a> to request or change your plan.</span>
-</footer>
-
+{% block extra_js %}
 <script>
-var AUTH = {
-    authenticated: {{ user_authenticated|yesno:'true,false' }},
-    hasMerchant: {{ user_has_merchant|yesno:'true,false' }},
-    planSelectUrl: "{% url 'portal:plan-select' %}",
-    loginUrl: "{% url 'login' %}?next={% url 'portal:plan-select' %}",
-    applyUrl: "{% url 'merchant_application' %}"
-};
-function handlePlanCta(e, el) {
-    e.preventDefault();
-    if (!AUTH.authenticated) {
-        window.location.href = AUTH.loginUrl;
-    } else if (AUTH.hasMerchant) {
-        window.location.href = AUTH.planSelectUrl;
-    } else {
-        window.location.href = AUTH.applyUrl;
-    }
-}
+    // Optional: Toggle between monthly/annual pricing
+    document.addEventListener('DOMContentLoaded', function() {
+        const toggle = document.getElementById('billingToggle');
+        const prices = document.querySelectorAll('[data-monthly-price]');
+        
+        if (toggle) {
+            toggle.addEventListener('change', function() {
+                const isAnnual = this.checked;
+                // In a real implementation, you'd show/hide annual pricing
+                // or calculate discounts
+                console.log('Toggle changed:', isAnnual ? 'Annual' : 'Monthly');
+            });
+        }
+    });
 </script>
-</body>
-</html>
+{% endblock %}
+{% endblock %}

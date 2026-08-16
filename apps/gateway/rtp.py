@@ -58,7 +58,6 @@ def persist_rtp_request(
     payload: dict,
     result: dict,
     payment=None,
-    extension_order=None,
     plan_request=None,
     release_code: str | None = None,
 ) -> RTPRequest:
@@ -72,8 +71,6 @@ def persist_rtp_request(
     }
     if payment is not None:
         rtp_kwargs["payment"] = payment
-    if extension_order is not None:
-        rtp_kwargs["extension_order"] = extension_order
     if plan_request is not None:
         rtp_kwargs["plan_request"] = plan_request
     if release_code:

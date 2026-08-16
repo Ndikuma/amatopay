@@ -1,78 +1,73 @@
+{% extends "base_public.html" %}
 {% load static %}
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#071f2b"><title>AmatoPay — Payments that move business forward</title><meta name="description"
-      content="Accept secure digital payments, protect every transaction and settle in BIF with AmatoPay."><link rel="icon"
-      href="{% static 'portal/favicon.svg' %}"
-      type="image/svg+xml"><link rel="stylesheet" href="{% static 'portal/css/tailwind.css' %}"><link rel="stylesheet" href="{% static 'portal/css/home.css' %}"></head>
-<body>
-    <nav class="topbar"><a class="logo" href="/"><span>A</span>Amato<b>Pay</b></a><div class="navlinks"><a href="#product">Product</a><a href="#protection">Customer protection</a><a href="#how">How it works</a><a href="{% url 'developer_docs' %}">Developers</a><a href="{% url 'billing_public:plan_list' %}">Plans</a></div><div class="nav-actions"><a class="signin" href="{% url 'delivery_lookup' %}">Find a payment</a>{% if user.is_authenticated %}<a class="signin" href="{% url 'portal:dashboard' %}">Dashboard</a>{% else %}<a class="signin" href="{% url 'login' %}">Sign in</a>{% endif %}<a class="nav-cta" href="{% url 'merchant_application' %}">Become a merchant <span>→</span></a></div></nav>
-    <main>
-        <section class="hero"><div class="hero-copy"><div class="badge"><i></i> Built for modern African commerce</div><h1>Payments made<br><em>beautifully simple.</em></h1><p>Accept, protect and manage every payment from one powerful platform—built for businesses moving Burundi forward.</p><div class="hero-actions"><a class="primary"
-   href="{% if user.is_authenticated %}{% url 'portal:dashboard' %}{% else %}#contact{% endif %}">Get started <span>→</span></a><a class="play" href="#how"><b>▶</b> See how it works</a></div><div class="trust"><span>Secure by design</span><span>Fast BIF settlements</span><span>Developer friendly</span></div></div>
-            <div class="hero-visual">
-                <div class="orb one"></div>
-                <div class="orb two"></div>
-                <div class="dashboard-card">
-                    <div class="mock-top"><span><i></i><i></i><i></i></span><b>Overview</b><small>Live</small></div>
-                    <div class="mock-body">
-                        <div class="mock-balance"><span>Available balance</span><strong>BIF 8,420,000</strong><small>↑ 18.4% this month</small></div>
-                        <div class="mini-stats"><span><small>Payments</small><b>1,284</b></span><span><small>Success rate</small><b>98.7%</b></span></div>
-                        <div class="chart">
-                            <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
-                        </div>
-                        <div class="payment-row"><span class="avatar">AK</span><span><b>Payment received</b><small>Order #AM-2941</small></span><strong>+ 125,000 BIF<small>Successful</small></strong></div>
+
+{% block title %}AmatoPay — Payments that move business forward{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'portal/css/home.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="hero"><div class="hero-copy"><div class="badge"><i></i> Built for modern African commerce</div><h1>Payments made<br><em>beautifully simple.</em></h1><p>Accept, protect and manage every payment from one powerful platform—built for businesses moving Burundi forward.</p><div class="hero-actions"><a class="primary"
+href="{% if user.is_authenticated %}{% url 'portal:dashboard' %}{% else %}#contact{% endif %}">Get started <span>→</span></a><a class="play" href="#how"><b>▶</b> See how it works</a></div><div class="trust"><span>Secure by design</span><span>Fast BIF settlements</span><span>Developer friendly</span></div></div>
+        <div class="hero-visual">
+            <div class="orb one"></div>
+            <div class="orb two"></div>
+            <div class="dashboard-card">
+                <div class="mock-top"><span><i></i><i></i><i></i></span><b>Overview</b><small>Live</small></div>
+                <div class="mock-body">
+                    <div class="mock-balance"><span>Available balance</span><strong>BIF 8,420,000</strong><small>↑ 18.4% this month</small></div>
+                    <div class="mini-stats"><span><small>Payments</small><b>1,284</b></span><span><small>Success rate</small><b>98.7%</b></span></div>
+                    <div class="chart">
+                        <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
                     </div>
-                </div>
-                <div class="float-card">
-                    <span>✓</span>
-                    <div><b>Payment successful</b><small>Just now · 85,000 BIF</small></div>
+                    <div class="payment-row"><span class="avatar">AK</span><span><b>Payment received</b><small>Order #AM-2941</small></span><strong>+ 125,000 BIF<small>Successful</small></strong></div>
                 </div>
             </div>
-        </section>
-        <section class="proof">
-            <p>One platform. Everything you need to get paid.</p>
-            <div><span>Mobile money</span><span>Real-time payments</span><span>Protected funds</span><span>Automated payouts</span></div>
-        </section>
-        <section class="features" id="product">
-            <div class="section-heading">
-                <span>THE AMATOPAY ADVANTAGE</span>
-                <h2>More than a payment gateway.</h2>
-                <p>Everything your business needs to collect money, build trust and grow with confidence.</p>
+            <div class="float-card">
+                <span>✓</span>
+                <div><b>Payment successful</b><small>Just now · 85,000 BIF</small></div>
             </div>
-            <div class="feature-grid">
-                <article class="dark">
-                    <div class="feature-icon">↗</div>
-                    <h3>Accept payments, effortlessly.</h3>
-                    <p>Give customers a fast, familiar way to pay with local mobile money and real-time confirmation.</p>
-                    <a href="#contact">Explore payments →</a>
-                    <div class="phone">
-                        <span>Payment request</span><b>120,000 BIF</b><button>Confirm payment</button>
-                    </div>
-                </article><article>
-                    <div class="feature-icon">◇</div>
-                    <h3>Trust built into every sale.</h3>
-                    <p>Protected funds and delivery confirmation help buyers and sellers transact with confidence.</p>
-                    <div class="steps"><span class="done">✓ <b>Alias verified</b></span><i></i><span class="done">✓ <b>Payment protected</b></span><i></i><span>3 <b>Delivery confirmed</b></span><i></i><span>4 <b>Funds released</b></span></div>
-                </article><article>
-                    <div class="feature-icon">⌁</div>
-                    <h3>Built for your developers.</h3>
-                    <p>Clear APIs, dependable webhooks and secure credentials make integration refreshingly quick.</p>
-                    <pre><code>curl /api/v1/checkout/sessions \
-  -H "Authorization: Bearer sk_•••"</code></pre></article>
+        </div>
+    </section>
+    <section class="proof">
+        <p>One platform. Everything you need to get paid.</p>
+        <div><span>Mobile money</span><span>Real-time payments</span><span>Protected funds</span><span>Automated payouts</span></div>
+    </section>
+    <section class="features" id="product">
+        <div class="section-heading">
+            <span>THE AMATOPAY ADVANTAGE</span>
+            <h2>More than a payment gateway.</h2>
+            <p>Everything your business needs to collect money, build trust and grow with confidence.</p>
+        </div>
+        <div class="feature-grid">
+            <article>
+                <div class="feature-icon">↗</div>
+                <h3>Accept payments, effortlessly.</h3>
+                <p>Give customers a fast, familiar way to pay with local mobile money and real-time confirmation.</p>
+                <a href="#contact">Explore payments →</a>
+                <div class="phone">
+                    <span>Payment request</span><b>120,000 BIF</b><button>Confirm payment</button>
                 </div>
-            </section>
-            <section class="protection" id="protection"><div class="protection-copy"><span class="kicker">CUSTOMER PROTECTION</span><h2>Received it? Confirm it.<br>Something wrong? Report it.</h2><p>Every protected AmatoPay payment includes a customer delivery page. The customer decides whether delivery is complete or needs investigation.</p><div class="protection-points"><div><b>✓</b><span><strong>Confirm delivery securely</strong><small>Use the six-digit code to release protected funds immediately.</small></span></div><div><b>!</b><span><strong>Start an investigation</strong><small>Report non-delivery, damage, an incomplete order, or a service that was not provided.</small></span></div><div><b>▣</b><span><strong>Provide alternative proof</strong><small>If code never arrives, verify with payer alias and attach receipt, photo, delivery note, or service-acceptance document for AmatoPay review.</small></span></div></div></div><div class="protection-card"><div class="protection-card-head"><span>AmatoPay</span><small>Protected delivery</small></div><div class="protected-order"><small>Protected amount</small><strong>100,000 BIF</strong><span>Order #AM-2941</span></div><p>What happened with your order?</p><div class="decision confirmed"><b>✓</b><span><strong>I received it</strong><small>Confirm with delivery code</small></span></div><div class="decision review"><b>◇</b><span><strong>I received it, but no code</strong><small>Request manual verification</small></span></div><div class="decision problem"><b>!</b><span><strong>I have a delivery problem</strong><small>Freeze funds and open an investigation</small></span></div><small class="protected-note">Investigated funds stay protected until AmatoPay completes its review.</small></div></section>
-            <section class="flow" id="how"><div><span class="kicker">ONE CLEAR VIEW</span><h2>Know where your money is.<br>At every moment.</h2><p>From payer alias verification to money landing in your account, AmatoPay keeps the whole journey visible.</p><a class="primary" href="{% url 'portal:dashboard' %}">Explore the dashboard →</a></div><ol><li><b>01</b><span><strong>Payer alias verified</strong><small>The active payment identity is checked before collection.</small></span></li><li><b>02</b><span><strong>Customer pays</strong><small>The payer approves the RTP and receives a secure release code.</small></span></li><li><b>03</b><span><strong>You fulfill the order</strong><small>The payer confirms receipt or asks AmatoPay to investigate a problem.</small></span></li><li><b>04</b><span><strong>Funds settle</strong><small>Only verified confirmation releases funds to the merchant.</small></span></li></ol></section>
-            <section class="cta" id="contact">
-                <span>READY WHEN YOU ARE</span>
-                <h2>Make every payment feel effortless.</h2>
-                <p>Join the next generation of businesses building with AmatoPay.</p>
-                <a href="{% url 'merchant_application' %}">Apply to become a merchant <b>→</b></a>
-            </section>
-        </main>
-        <footer>
-            <a class="logo" href="/"><span>A</span>Amato<b>Pay</b></a>
-            <p>Modern payments for ambitious businesses.</p>
-            <small>© 2026 AmatoPay. All rights reserved.</small>
-        </footer>
-    </body>
-    </html>
+            </article><article>
+                <div class="feature-icon">◇</div>
+                <h3>Trust built into every sale.</h3>
+                <p>Protected funds and delivery confirmation help buyers and sellers transact with confidence.</p>
+                <div class="steps"><span class="done">✓ <b>Alias verified</b></span><i></i><span class="done">✓ <b>Payment protected</b></span><i></i><span>3 <b>Delivery confirmed</b></span><i></i><span>4 <b>Funds released</b></span></div>
+            </article><article>
+                <div class="feature-icon">⌁</div>
+                <h3>Built for your developers.</h3>
+                <p>Clear APIs, dependable webhooks and secure credentials make integration refreshingly quick.</p>
+                <pre><code>curl /api/v1/checkout/sessions \
+-H "Authorization: Bearer sk_•••"</code></pre></article>
+            </div>
+    </section>
+    <section class="protection" id="protection"><div class="protection-copy"><span class="kicker">CUSTOMER PROTECTION</span><h2>Received it? Confirm it.<br>Something wrong? Report it.</h2><p>Every protected AmatoPay payment includes a customer delivery page. The customer decides whether delivery is complete or needs investigation.</p><div class="protection-points"><div><b>✓</b><span><strong>Confirm delivery securely</strong><small>Use the six-digit code to release protected funds immediately.</small></span></div><div><b>!</b><span><strong>Start an investigation</strong><small>Report non-delivery, damage, an incomplete order, or a service that was not provided.</small></span></div><div><b>▣</b><span><strong>Provide alternative proof</strong><small>If code never arrives, verify with payer alias and attach receipt, photo, delivery note, or service-acceptance document for AmatoPay review.</small></span></div></div></div><div class="protection-card"><div class="protection-card-head"><span>AmatoPay</span><small>Protected delivery</small></div><div class="protected-order"><small>Protected amount</small><strong>100,000 BIF</strong><span>Order #AM-2941</span></div><p>What happened with your order?</p><div class="decision confirmed"><b>✓</b><span><strong>I received it</strong><small>Confirm with delivery code</small></span></div><div class="decision review"><b>◇</b><span><strong>I received it, but no code</strong><small>Request manual verification</small></span></div><div class="decision problem"><b>!</b><span><strong>I have a delivery problem</strong><small>Freeze funds and open an investigation</small></span></div><small class="protected-note">Investigated funds stay protected until AmatoPay completes its review.</small></div></section>
+    <section class="flow" id="how"><div><span class="kicker">ONE CLEAR VIEW</span><h2>Know where your money is.<br>At every moment.</h2><p>From payer alias verification to money landing in your account, AmatoPay keeps the whole journey visible.</p><a class="primary" href="{% url 'portal:dashboard' %}">Explore the dashboard →</a></div><ol><li><b>01</b><span><strong>Payer alias verified</strong><small>The active payment identity is checked before collection.</small></span></li><li><b>02</b><span><strong>Customer pays</strong><small>The payer approves the RTP and receives a secure release code.</small></span></li><li><b>03</b><span><strong>You fulfill the order</strong><small>The payer confirms receipt or asks AmatoPay to investigate a problem.</small></span></li><li><b>04</b><span><strong>Funds settle</strong><small>Only verified confirmation releases funds to the merchant.</small></span></li></ol></section>
+    <section class="cta" id="contact">
+        <span>READY WHEN YOU ARE</span>
+        <h2>Make every payment feel effortless.</h2>
+        <p>Join the next generation of businesses building with AmatoPay.</p>
+        <a href="{% url 'merchant_application' %}">Apply to become a merchant <b>→</b></a>
+    </section>
+{% endblock %}
