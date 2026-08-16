@@ -20,9 +20,6 @@ from apps.merchants.models import Merchant, MerchantActivity, MerchantApiKey
 from apps.merchants.models import MerchantWebhookEndpoint
 from apps.billing.services import (
     active_plan_assignment,
-    count_extension_transactions,
-    create_extension_order,
-    initiate_extension_payment,
     initiate_plan_request_payment,
     resolve_transaction_fee,
 )
@@ -41,8 +38,7 @@ def _merchant(request):
         return None
 
 
-def _require_role(request, allowed):
-    return _merchant(request)
+
 
 
 def _no_merchant(request):
@@ -131,13 +127,9 @@ def billing(request):
             status__in=successful_statuses,
         ).count()
         limit = assignment.monthly_transaction_limit
-        extra = count_extension_transactions(assignment)
-        effective_limit = (limit + extra) if limit is not None else None
-        remaining = max(effective_limit - used, 0) if effective_limit is not None else None
-        usage_percent = min(round(used / effective_limit * 100), 100) if effective_limit else 0
+        remaining = max(limit - used, 0) if limit is not None else None
+        usage_percent = min(round(used / limit * 100), 100) if limit else 0
         plan = assignment.plan
-        can_buy_extension = bool(plan.extension_price and plan.extension_transactions)
-        recent_extensions = assignment.extension_orders.order_by("-created_at")[:5]
         pricing = {
             "mode": "plan",
             "assignment": assignment,
@@ -145,16 +137,11 @@ def billing(request):
             "description": plan.description,
             "price": assignment.effective_monthly_price,
             "currency": plan.currency,
-            "limit": effective_limit,
+            "limit": limit,
             "base_limit": limit,
-            "extra_transactions": extra,
             "used": used,
             "remaining": remaining,
             "usage_percent": usage_percent,
-            "can_buy_extension": can_buy_extension,
-            "extension_price": plan.extension_price,
-            "extension_transactions": plan.extension_transactions,
-            "recent_extensions": recent_extensions,
         }
     else:
         try:
@@ -181,58 +168,6 @@ def billing(request):
     )
 
 
-@login_required
-@require_POST
-def billing_buy_extension(request):
-    merchant = _merchant(request)
-    if not merchant:
-        return _no_merchant(request)
-    now = timezone.now()
-    assignment = active_plan_assignment(merchant, merchant.default_currency, at=now)
-    if not assignment:
-        messages.error(request, "No active plan assignment found.")
-        return redirect("portal:billing")
-    try:
-        order = create_extension_order(assignment, initiated_by=request.user)
-    except ValueError as exc:
-        messages.error(request, str(exc))
-        return redirect("portal:billing")
-
-    # Resolve the merchant's primary settlement alias as the payer.
-    payer_alias = (
-        merchant.settlement_accounts
-        .filter(alias_type="MOBILE", is_primary=True, is_active=True)
-        .values_list("alias_value", flat=True)
-        .first()
-    )
-    if not payer_alias:
-        order.status = "cancelled"
-        order.save(update_fields=["status", "updated_at"])
-        messages.error(
-            request,
-            "No active primary MOBILE settlement account found. "
-            "Add one in Business profile before purchasing an extension.",
-        )
-        return redirect("portal:billing")
-
-    from apps.gateway.rtp import PaymentGatewayError
-
-    try:
-        initiate_extension_payment(order, payer_alias=payer_alias)
-        messages.success(
-            request,
-            f"Extension pack payment initiated. "
-            f"+{order.extra_transactions} transactions will be credited once payment is confirmed.",
-        )
-    except PaymentGatewayError as exc:
-        order.status = "cancelled"
-        order.save(update_fields=["status", "updated_at"])
-        messages.error(request, str(exc))
-    except Exception:
-        order.status = "cancelled"
-        order.save(update_fields=["status", "updated_at"])
-        messages.error(request, "Extension payment could not be initiated. Please try again.")
-    return redirect("portal:billing")
 
 
 @login_required
@@ -331,9 +266,7 @@ def billing_request_plan(request):
 
 @login_required
 def payments(request):
-    merchant = _require_role(
-        request, {"owner", "admin", "finance", "support", "viewer"}
-    )
+    merchant = _merchant(request)
     if not merchant:
         return _no_merchant(request)
 
@@ -351,9 +284,7 @@ def payments(request):
 
 @login_required
 def payment_detail(request, reference):
-    merchant = _require_role(
-        request, {"owner", "admin", "finance", "support", "viewer"}
-    )
+    merchant = _merchant(request)
     if not merchant:
         return _no_merchant(request)
     payment = get_object_or_404(
@@ -406,7 +337,7 @@ def payment_detail(request, reference):
 @login_required
 @require_POST
 def payment_confirm_delivery(request, reference):
-    merchant = _require_role(request, {"owner", "admin", "support"})
+    merchant = _merchant(request)
     if not merchant:
         return _no_merchant(request)
     payment = get_object_or_404(Payment, merchant=merchant, reference=reference)
@@ -454,7 +385,7 @@ def payment_confirm_delivery(request, reference):
 
 @login_required
 def settlements(request):
-    merchant = _require_role(request, {"owner", "admin", "finance", "viewer"})
+    merchant = _merchant(request)
     if not merchant:
         return _no_merchant(request)
     items = (
@@ -469,7 +400,7 @@ def settlements(request):
 
 @login_required
 def refunds(request):
-    merchant = _require_role(request, {"owner", "admin", "finance", "support"})
+    merchant = _merchant(request)
     if not merchant:
         return _no_merchant(request)
     refund_queryset = (
@@ -494,9 +425,7 @@ def refunds(request):
 
 @login_required
 def trust(request):
-    merchant = _require_role(
-        request, {"owner", "admin", "finance", "support", "viewer"}
-    )
+    merchant = _merchant(request)
     if not merchant:
         return _no_merchant(request)
 
@@ -537,7 +466,7 @@ def trust(request):
 
 @login_required
 def developers(request):
-    merchant = _require_role(request, {"owner", "admin", "developer"})
+    merchant = _merchant(request)
     if not merchant:
         return _no_merchant(request)
 
@@ -588,7 +517,7 @@ WEBHOOK_EVENTS = {
 @login_required
 @require_POST
 def webhook_create(request):
-    merchant = _require_role(request, {"owner", "admin", "developer"})
+    merchant = _merchant(request)
     if not merchant:
         return _no_merchant(request)
     if merchant.webhook_endpoints.filter(active=True).count() >= 5:
@@ -619,7 +548,7 @@ def webhook_create(request):
 
 
 def _merchant_endpoint(request, endpoint_id):
-    merchant = _require_role(request, {"owner", "admin", "developer"})
+    merchant = _merchant(request)
     if not merchant:
         raise PermissionDenied("No merchant workspace is available.")
     return merchant, get_object_or_404(merchant.webhook_endpoints, id=endpoint_id)
@@ -669,7 +598,7 @@ def webhook_test(request, endpoint_id):
 @login_required
 @require_POST
 def api_key_create(request):
-    merchant = _require_role(request, {"owner", "admin", "developer"})
+    merchant = _merchant(request)
     if not merchant:
         return _no_merchant(request)
     name = request.POST.get("name", "").strip()[:80] or "Integration key"
@@ -696,7 +625,7 @@ def api_key_create(request):
 @login_required
 @require_POST
 def api_key_rotate(request, key_id):
-    merchant = _require_role(request, {"owner", "admin", "developer"})
+    merchant = _merchant(request)
     key = get_object_or_404(merchant.api_keys, id=key_id)
     raw = key.rotate()
     _record_key_activity(
@@ -719,7 +648,7 @@ def api_key_rotate(request, key_id):
 @login_required
 @require_POST
 def api_key_revoke(request, key_id):
-    merchant = _require_role(request, {"owner", "admin", "developer"})
+    merchant = _merchant(request)
     key = get_object_or_404(merchant.api_keys, id=key_id)
     key.revoke()
     _record_key_activity(
@@ -730,9 +659,7 @@ def api_key_revoke(request, key_id):
 
 @login_required
 def profile(request):
-    merchant = _require_role(
-        request, {"owner", "admin", "finance", "support", "viewer", "developer"}
-    )
+    merchant = _merchant(request)
     if not merchant:
         return _no_merchant(request)
     if request.method == "POST":

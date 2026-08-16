@@ -32,7 +32,4 @@ urlpatterns = [
     path("developers/webhooks/<uuid:endpoint_id>/test/", views.webhook_test, name="webhook-test"),
     path("profile/", views.profile, name="profile"),
     path("billing/", views.billing, name="billing"),
-    path("billing/extension/buy/", views.billing_buy_extension, name="billing-buy-extension"),
-    path("billing/plans/", views.plan_select, name="plan-select"),
-    path("billing/plans/request/", views.billing_request_plan, name="billing-request-plan"),
 ]

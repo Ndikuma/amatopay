@@ -1,0 +1,66 @@
+{% extends "base_public.html" %}
+
+{% block title %}Request {{ plan.name }} Plan - AmatoPay{% endblock %}
+
+{% block content %}
+<div class="bg-slate-50">
+    <div class="container mx-auto py-16 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-2xl mx-auto">
+            <div class="bg-white rounded-2xl shadow-2xl p-8">
+                <div class="text-center mb-10">
+                    <h1 class="text-4xl font-extrabold text-slate-900">Request Plan: {{ plan.name }}</h1>
+                    <p class="text-xl text-slate-600 mt-4">Confirm your details to proceed with the plan request.</p>
+                </div>
+
+                <div class="bg-slate-100 rounded-lg p-6 mb-8">
+                    <h2 class="text-2xl font-bold text-slate-900">{{ plan.name }}</h2>
+                    <p class="text-slate-600 mt-2">{{ plan.description }}</p>
+                    <div class="mt-6 text-3xl font-extrabold text-slate-900">
+                        {% if plan.monthly_price is not None %}
+                            BIF {{ plan.monthly_price|floatformat:0 }} / month
+                        {% else %}
+                            Contract Pricing
+                        {% endif %}
+                    </div>
+                </div>
+
+                <form method="post" class="space-y-6">
+                    {% csrf_token %}
+                    
+                    <div>
+                        <label for="{{ form.payer_alias.id_for_label }}" class="block text-sm font-medium text-slate-700 dark:text-slate-200">{{ form.payer_alias.label }}</label>
+                        <div class="mt-1 text-slate-900">
+                            {{ form.payer_alias }}
+                        </div>
+                        {% if form.payer_alias.help_text %}
+                        <p class="mt-2 text-sm text-slate-500">{{ form.payer_alias.help_text }}</p>
+                        {% endif %}
+                        {% for error in form.payer_alias.errors %}
+                        <p class="mt-2 text-sm text-red-600">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+
+                    <div>
+                        <label for="{{ form.note.id_for_label }}" class="block text-sm font-medium text-slate-700 dark:text-slate-200">{{ form.note.label }}</label>
+                        <div class="mt-1 text-slate-900">
+                            {{ form.note }}
+                        </div>
+                        {% if form.note.help_text %}
+                        <p class="mt-2 text-sm text-slate-500">{{ form.note.help_text }}</p>
+                        {% endif %}
+                        {% for error in form.note.errors %}
+                        <p class="mt-2 text-sm text-red-600">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+
+                    <div class="pt-6">
+                        <button type="submit" class="w-full bg-indigo-600 text-white font-semibold rounded-lg py-3 px-4 hover:bg-indigo-700 transition-colors duration-300">
+                            Submit Request & Pay
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

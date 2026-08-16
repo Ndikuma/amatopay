@@ -40,7 +40,7 @@ PLANS = (
     {
         "code": "business",
         "name": "Business",
-        "description": "Full-featured plan for established merchants with team access.",
+        "description": "Full-featured plan for established merchants.",
         "monthly_price": 850000,
         "included_transactions_per_month": 544,
         "extension_transactions": 272,
@@ -53,7 +53,7 @@ PLANS = (
             "Delivery protection",
             "Request logs",
             "Refunds",
-            "Team workspaces",
+
         ],
     },
     {
@@ -72,7 +72,7 @@ PLANS = (
             "Delivery protection",
             "Request logs",
             "Refunds",
-            "Team workspaces",
+
             "Priority support",
             "KYB fast-track",
         ],
@@ -93,7 +93,7 @@ PLANS = (
             "Delivery protection",
             "Request logs",
             "Refunds",
-            "Team workspaces",
+
             "Priority support",
             "KYB fast-track",
             "Dedicated account manager",
@@ -116,7 +116,7 @@ PLANS = (
             "Delivery protection",
             "Request logs",
             "Refunds",
-            "Team workspaces",
+
             "Priority support",
             "KYB fast-track",
             "Dedicated account manager",

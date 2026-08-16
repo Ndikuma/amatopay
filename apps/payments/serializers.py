@@ -16,19 +16,8 @@ class PaymentSerializer(serializers.ModelSerializer):
         max_digits=20, decimal_places=2, read_only=True
     )
     history = PaymentHistorySerializer(many=True, read_only=True)
-    delivery_decision_url = serializers.SerializerMethodField()
 
-    def get_delivery_decision_url(self, obj):
-        if (
-            obj.release_code_confirmed_at is None
-            and obj.status
-            not in {Payment.Status.DELIVERY_PENDING, Payment.Status.DISPUTED}
-        ):
-            return None
-        path = f"/deliveries/{obj.reference}/"
-        request = self.context.get("request")
-        return request.build_absolute_uri(path) if request else path
-
+   
     class Meta:
         model = Payment
         fields = [
@@ -47,5 +36,4 @@ class PaymentSerializer(serializers.ModelSerializer):
             "metadata",
             "created_at",
             "history",
-            "delivery_decision_url",
         ]

@@ -19,7 +19,9 @@ SECRET_KEY = env("SECRET_KEY", "dev-only-change-me")
 RELEASE_CODE_ENCRYPTION_KEYS = env_list("RELEASE_CODE_ENCRYPTION_KEYS")
 ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", "localhost,127.0.0.1")
 CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS")
-if not DEBUG:
+IS_MAKEMIGRATIONS = len(sys.argv) > 1 and sys.argv[1] == "makemigrations"
+
+if not DEBUG and not IS_MAKEMIGRATIONS:
     if len(SECRET_KEY) < 50 or SECRET_KEY in {
         "dev-only-change-me",
         "replace-with-a-long-random-value",
@@ -265,17 +267,7 @@ REST_FRAMEWORK = {
     "PAGE_SIZE": 100,
     "EXCEPTION_HANDLER": "rest_framework.views.exception_handler",
 }
-SPECTACULAR_SETTINGS = {
-    "TITLE": "AmatoPay API",
-    "DESCRIPTION": "Merchant checkout, protected payments, delivery confirmation, and settlement APIs.",
-    "VERSION": "1.0.0",
-    "SERVE_INCLUDE_SCHEMA": False,
-    "SWAGGER_UI_DIST": "SIDECAR",
-    "SWAGGER_UI_FAVICON_HREF": "SIDECAR",
-    "REDOC_DIST": "SIDECAR",
-    "SCHEMA_PATH_PREFIX": r"/api/v1",
-    "COMPONENT_SPLIT_REQUEST": True,
-}
+
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
@@ -319,4 +311,198 @@ LOGGING = {
     },
     "handlers": {"console": {"class": "logging.StreamHandler", "formatter": "json"}},
     "root": {"handlers": ["console"], "level": env("LOG_LEVEL", "INFO")},
+}
+
+# ============================================================================
+# AmatoPay API - drf-spectacular settings
+# ============================================================================
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "AmatoPay API",
+    "VERSION": "2.0.0",
+
+    "DESCRIPTION": """
+# AmatoPay Payment Gateway API
+
+AmatoPay is a secure and reliable payment processing solution for merchants
+in Burundi.
+
+## Overview
+
+AmatoPay enables merchants to:
+
+- Accept mobile money payments
+- Verify payer identities
+- Track payment status in real-time
+- Manage checkout sessions
+- Receive webhook notifications
+
+## Authentication
+
+Most API endpoints require API key authentication using
+`MerchantApiKeyAuthentication`.
+
+**Authorization Header:**
+
+`Authorization: Api-Key YOUR_API_KEY`
+
+## Payment Flow
+
+1. **Verify Payer Alias** - Validate that the payer exists and is payable.
+2. **Create Checkout Session** - Initiate a payment session.
+3. **Customer Payment** - Customer completes payment through hosted checkout.
+4. **Check Status** - Check the payment status until it reaches a final state.
+5. **Return to Merchant** - Customer is redirected to the configured `return_url`.
+
+## Payment Statuses
+
+| Status | Description | Terminal |
+|---|---|---|
+| pending | Payment is being processed | No |
+| paid | Payment completed successfully | Yes |
+| funds_held | Funds are on hold | Yes |
+| delivery_pending | Awaiting delivery confirmation | Yes |
+| settled | Payment settled | Yes |
+| failed | Payment failed | Yes |
+| rejected | Payment rejected | Yes |
+| cancelled | Payment cancelled | Yes |
+| expired | Payment expired | Yes |
+| refunded | Payment refunded | Yes |
+
+## Error Handling
+
+Standard HTTP status codes are used:
+
+- `200` - Successful request
+- `400` - Validation error
+- `403` - Permission denied
+- `404` - Resource not found
+- `500` - Internal server error
+
+## Rate Limiting
+
+API requests are rate-limited to prevent abuse.
+Contact support if you require a higher limit.
+
+""",
+
+    # ------------------------------------------------------------------------
+    # Schema
+    # ------------------------------------------------------------------------
+    "SERVE_INCLUDE_SCHEMA": False,
+    "SCHEMA_PATH_PREFIX": r"/api/v1",
+    "SCHEMA_PATH_PREFIX_TRIM": False,
+    "COMPONENT_SPLIT_REQUEST": True,
+
+    # ------------------------------------------------------------------------
+    # Swagger / Redoc
+    # ------------------------------------------------------------------------
+    "SWAGGER_UI_DIST": "SIDECAR",
+    "SWAGGER_UI_FAVICON_HREF": "SIDECAR",
+    "REDOC_DIST": "SIDECAR",
+
+    "SWAGGER_UI_SETTINGS": {
+        "deepLinking": True,
+        "persistAuthorization": True,
+        "filter": True,
+        "displayRequestDuration": True,
+        "tryItOutEnabled": True,
+        "docExpansion": "list",
+        "tagsSorter": "alpha",
+        "operationsSorter": "alpha",
+    },
+
+    "REDOC_SETTINGS": {
+        "lazyRendering": True,
+        "hideLoading": False,
+        "disableSearch": False,
+        "scrollYOffset": 10,
+        "theme": {
+            "colors": {
+                "primary": {"main": "#1A237E"},
+                "success": {"main": "#27AE60"},
+                "warning": {"main": "#F39C12"},
+                "error": {"main": "#E74C3C"},
+                "info": {"main": "#3498DB"},
+                "text": {
+                    "primary": "#1A237E",
+                    "secondary": "#546E7A",
+                },
+                "border": {"main": "#B0BEC5"},
+            },
+            "typography": {
+                "fontSize": "14px",
+                "lineHeight": "1.5",
+                "fontFamily": (
+                    "-apple-system, BlinkMacSystemFont, "
+                    "'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"
+                ),
+            },
+        },
+    },
+
+    # ------------------------------------------------------------------------
+    # API Tags
+    # ------------------------------------------------------------------------
+    "TAGS": [
+    
+        {
+            "name": "Checkout",
+            "description": "Manage checkout sessions and payment status tracking",
+        },
+        {
+            "name": "Payments",
+            "description": "Payment processing and management",
+        },
+    ],
+    # ------------------------------------------------------------------------
+    # Authentication
+    # ------------------------------------------------------------------------
+    "SECURITY": [
+        {
+            "ApiKeyAuth": [],
+        },
+    ],
+
+    "SECURITY_DEFINITIONS": {
+        "ApiKeyAuth": {
+            "type": "apiKey",
+            "in": "header",
+            "name": "Authorization",
+            "description": "API key authentication. Format: `Api-Key YOUR_API_KEY`",
+        },
+        "BearerAuth": {
+            "type": "http",
+            "scheme": "bearer",
+            "bearerFormat": "JWT",
+            "description": "JWT authentication for internal services",
+        },
+    },
+
+    # ------------------------------------------------------------------------
+    # Schema behavior
+    # ------------------------------------------------------------------------
+    "SCHEMA_COERCE_PATH_PK": True,
+
+    "SCHEMA_COERCE_METHOD_NAMES": {
+        "retrieve": "read",
+        "destroy": "delete",
+        "update": "update",
+        "partial_update": "partial_update",
+        "list": "list",
+        "create": "create",
+    },
+
+    # ------------------------------------------------------------------------
+    # API serving / ordering
+    # ------------------------------------------------------------------------
+    "SERVE_PERMISSIONS": [],
+    "SERVE_AUTHENTICATION": [],
+
+    "SORT_OPERATIONS": True,
+    "SORT_OPERATION_PARAMETERS": True,
+    "SORT_OPERATION_PARAMETER_GROUPS": True,
+    "SORT_TAGS": True,
+
+    "OPERATION_ID_SOURCE": "method",
 }

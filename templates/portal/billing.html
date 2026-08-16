@@ -1,250 +1,59 @@
-{% extends 'portal/base.html' %}
-{% block title %}Billing & plan · AmatoPay{% endblock %}
+{% extends "portal/base.html" %}
+
+{% block page_title %}Billing & Plan{% endblock %}
+
 {% block content %}
-<header class="page-header">
-    <div>
-        <p class="eyebrow">Merchant billing</p>
-        <h1>Billing &amp; plan</h1>
-        <p class="page-subtitle">Understand your pricing, contract, and monthly processing usage.</p>
-    </div>
-    <span class="status-pill status-active"><span></span>Active</span>
-</header>
+<div class="space-y-8">
+    <div class="bg-white shadow-sm ring-1 ring-slate-900/5 rounded-xl">
+        <div class="p-6">
+            <h2 class="text-lg font-semibold leading-6 text-slate-900">Current Plan</h2>
+            <div class="mt-4">
+                {% if pricing.mode == 'plan' %}
+                    <div class="flex items-baseline gap-x-4">
+                        <h3 class="text-2xl font-bold tracking-tight text-slate-900">{{ pricing.name }}</h3>
+                        <span class="text-sm font-semibold leading-6 text-slate-600">{{ pricing.price|floatformat:2 }} {{ pricing.currency }}/month</span>
+                    </div>
+                    <p class="mt-2 text-sm text-slate-500">{{ pricing.description }}</p>
 
-{% if pricing.mode == 'plan' %}
-
-<div class="profile-hero">
-    <div class="profile-monogram">◈</div>
-    <div>
-        <p class="eyebrow">CURRENT PLAN</p>
-        <h2>{{ pricing.name }}</h2>
-        <p>{{ pricing.description|default:'Your contracted AmatoPay processing plan.' }}</p>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">
-            <span class="billing-tag">0% transaction fee</span>
-            <span class="billing-tag">{{ pricing.currency }}</span>
-            <span class="billing-tag">Contract assigned</span>
-            {% if pricing.extra_transactions %}<span class="billing-tag">+{{ pricing.extra_transactions }} extension txn</span>{% endif %}
+                    <div class="mt-6">
+                        <p class="text-sm font-medium text-slate-600">Monthly transaction usage</p>
+                        <div class="mt-2 flex items-center gap-x-4">
+                            <div class="w-full bg-slate-200 rounded-full h-2.5">
+                                <div class="bg-indigo-600 h-2.5 rounded-full" style="width: {{ pricing.usage_percent }}%"></div>
+                            </div>
+                            <span class="text-sm font-semibold text-slate-900">{{ pricing.usage_percent }}%</span>
+                        </div>
+                        <p class="mt-1 text-xs text-slate-500">
+                            {{ pricing.used }} of {{ pricing.limit|default:"unlimited" }} transactions used.
+                        </p>
+                    </div>
+                {% else %}
+                    <div class="flex items-baseline gap-x-4">
+                        <h3 class="text-2xl font-bold tracking-tight text-slate-900">Pay As You Go</h3>
+                        {% if pricing.rate is not None %}
+                        <span class="text-sm font-semibold leading-6 text-slate-600">{{ pricing.rate }}% per transaction</span>
+                        {% endif %}
+                    </div>
+                    <p class="mt-2 text-sm text-slate-500">You are currently on a pay-as-you-go plan. You are charged a percentage fee for each successful transaction.</p>
+                {% endif %}
+            </div>
+        </div>
+        <div class="p-6 bg-slate-50 rounded-b-xl border-t border-slate-900/5">
+            <a href="#" class="text-sm font-semibold leading-6 text-indigo-600 hover:text-indigo-500">
+                Change plan <span aria-hidden="true">&rarr;</span>
+            </a>
         </div>
     </div>
-    <div class="readiness-ring" style="--progress:{{ pricing.usage_percent }}">
-        <strong>{{ pricing.usage_percent }}%</strong>
-        <small>Monthly usage</small>
-    </div>
-</div>
 
-<div class="metrics-grid section" aria-label="Plan summary">
-    <article class="metric-card featured">
-        <div class="metric-head"><span>Monthly price</span><span class="metric-icon">◈</span></div>
-        <strong class="metric-value">{% if pricing.price is not None %}{{ pricing.price|floatformat:0 }}{% else %}Contract{% endif %}</strong>
-        <span class="metric-unit">{% if pricing.price is not None %}{{ pricing.currency }} per month{% else %}Contact Support for pricing{% endif %}</span>
-    </article>
-    <article class="metric-card">
-        <div class="metric-head"><span>Used this month</span><span class="metric-icon">↔</span></div>
-        <strong class="metric-value">{{ pricing.used }}</strong>
-        <span class="metric-unit">Successful payments</span>
-    </article>
-    <article class="metric-card">
-        <div class="metric-head"><span>Monthly allowance</span><span class="metric-icon">◎</span></div>
-        <strong class="metric-value">{% if pricing.limit is not None %}{{ pricing.limit }}{% else %}∞{% endif %}</strong>
-        <span class="metric-unit">
-            Included transactions
-            {% if pricing.extra_transactions %}<br><span style="color:var(--teal-600);font-weight:750;">+{{ pricing.extra_transactions }} from extensions</span>{% endif %}
-        </span>
-    </article>
-    <article class="metric-card">
-        <div class="metric-head"><span>Remaining</span><span class="metric-icon success">✓</span></div>
-        <strong class="metric-value">{% if pricing.remaining is not None %}{{ pricing.remaining }}{% else %}∞{% endif %}</strong>
-        <span class="metric-unit">This calendar month</span>
-    </article>
-</div>
-
-{% if pricing.limit is not None %}
-<div class="panel section billing-usage-panel">
-    <div class="panel-head">
-        <div>
-            <h2>Monthly usage</h2>
-            <p>
-                {{ pricing.used }} of {% if pricing.limit %}{{ pricing.limit }}{% else %}unlimited{% endif %} transactions used
-                {% if pricing.extra_transactions %}&nbsp;· {{ pricing.extra_transactions }} extra from extension packs{% endif %}
-            </p>
-        </div>
-        <span class="billing-usage-pct">{{ pricing.usage_percent }}%</span>
-    </div>
-    <div class="billing-progress-wrap">
-        <div class="billing-progress-bar" style="--pct:{{ pricing.usage_percent }}%"
-             role="progressbar" aria-valuenow="{{ pricing.usage_percent }}"
-             aria-valuemin="0" aria-valuemax="100"></div>
-    </div>
-    {% if pricing.base_limit and pricing.extra_transactions %}
-    <div class="billing-progress-legend">
-        <span>Base: {{ pricing.base_limit }}</span>
-        <span style="color:var(--teal-600);">+{{ pricing.extra_transactions }} extension</span>
-        <span>Total: {{ pricing.limit }}</span>
-    </div>
-    {% endif %}
-</div>
-{% endif %}
-
-{% if pricing.can_buy_extension %}
-<div class="panel section">
-    <div class="panel-head">
-        <div>
-            <h2>Need more transactions?</h2>
-            <p>
-                Buy an extension pack to add <strong>{{ pricing.extension_transactions }}</strong> extra transactions
-                for <strong>{{ pricing.extension_price|floatformat:0 }} {{ pricing.currency }}</strong>.
-                Payment is collected via RTP from your primary settlement account.
-            </p>
-        </div>
-        <form method="post" action="{% url 'portal:billing-buy-extension' %}">
-            {% csrf_token %}
-            <button type="submit" class="button button-primary">
-                Buy +{{ pricing.extension_transactions }} transactions
-            </button>
-        </form>
-    </div>
-    {% if pricing.recent_extensions %}
-    <div class="table-scroll">
-        <table class="data-table compact-table">
-            <thead>
-                <tr>
-                    <th>Reference</th>
-                    <th>Transactions</th>
-                    <th>Amount</th>
-                    <th>Status</th>
-                    <th>Date</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for ext in pricing.recent_extensions %}
-                <tr>
-                    <td><code>{{ ext.reference }}</code></td>
-                    <td>+{{ ext.extra_transactions }}</td>
-                    <td>{{ ext.amount|floatformat:0 }} {{ ext.currency }}</td>
-                    <td><span class="status-pill status-{{ ext.status }}"><span></span>{{ ext.get_status_display }}</span></td>
-                    <td>{{ ext.created_at|date:'d M Y, H:i' }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    {% endif %}
-</div>
-{% endif %}
-
-<div class="panel section">
-    <div class="panel-head">
-        <div><h2>Contract details</h2><p>Your effective merchant assignment</p></div>
-        <a class="button button-secondary" href="{% url 'portal:plan-select' %}">Change plan</a>
-    </div>
-    <dl class="detail-grid">
-        <div><dt>Effective from</dt><dd>{{ pricing.assignment.effective_from|date:'d M Y' }}</dd></div>
-        <div><dt>Effective until</dt><dd>{{ pricing.assignment.effective_until|date:'d M Y'|default:'Ongoing' }}</dd></div>
-        <div><dt>Billing currency</dt><dd>{{ pricing.currency }}</dd></div>
-        <div><dt>Transaction pricing</dt><dd>Covered by plan</dd></div>
-    </dl>
-</div>
-
-{% else %}
-
-<div class="profile-hero">
-    <div class="profile-monogram">↔</div>
-    <div>
-        <p class="eyebrow">CURRENT PRICING</p>
-        <h2>Pay as you go</h2>
-        <p>You do not have an active contracted plan. Fees apply only when you process a successful payment.</p>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">
-            <span class="billing-tag">No monthly subscription</span>
-            <span class="billing-tag">No monthly allowance</span>
+    {# Placeholder for Invoices/Billing History #}
+    <div class="bg-white shadow-sm ring-1 ring-slate-900/5 rounded-xl">
+        <div class="p-6">
+            <h2 class="text-lg font-semibold leading-6 text-slate-900">Billing History</h2>
+            <div class="mt-4 text-center py-12 border-2 border-dashed border-slate-200 rounded-lg">
+                <p class="text-sm font-medium text-slate-500">No invoices yet.</p>
+                <p class="mt-1 text-xs text-slate-400">Your monthly invoices for plan subscriptions and fees will appear here.</p>
+            </div>
         </div>
     </div>
 </div>
-
-<div class="metrics-grid section" aria-label="Pay as you go summary">
-    <article class="metric-card featured">
-        <div class="metric-head"><span>Transaction fee</span><span class="metric-icon">%</span></div>
-        <strong class="metric-value">{% if pricing.rate %}{{ pricing.rate|floatformat:2 }}%{% else %}—{% endif %}</strong>
-        <span class="metric-unit">Per successful payment</span>
-    </article>
-    <article class="metric-card">
-        <div class="metric-head"><span>Plan</span><span class="metric-icon">◇</span></div>
-        <strong class="metric-value">{% if pricing.plan %}{{ pricing.plan.name }}{% else %}Pay-as-you-go{% endif %}</strong>
-        <span class="metric-unit">No monthly subscription</span>
-    </article>
-    <article class="metric-card">
-        <div class="metric-head"><span>Monthly price</span><span class="metric-icon">—</span></div>
-        <strong class="metric-value">0</strong>
-        <span class="metric-unit">{{ pricing.currency }}</span>
-    </article>
-    <article class="metric-card">
-        <div class="metric-head"><span>Allowance</span><span class="metric-icon">∞</span></div>
-        <strong class="metric-value">None</strong>
-        <span class="metric-unit">Pay for actual processing</span>
-    </article>
-</div>
-
-<div class="panel section billing-upgrade-panel">
-    <div class="panel-head">
-        <div>
-            <h2>Need a contracted plan?</h2>
-            <p>Plans provide a predictable monthly price, an agreed transaction allowance, and 0% per-transaction fees.</p>
-        </div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;">
-            <a class="button button-secondary" href="{% url 'portal:plan-select' %}">Browse plans</a>
-            <a class="button button-primary" href="mailto:support@amatotech.com?subject=AmatoPay%20plan%20request">Contact Support</a>
-        </div>
-    </div>
-</div>
-
-{% endif %}
-
-<p class="regulatory-footnote">Plan and pricing changes are contractual. Contact AmatoPay Support to request or change a plan.</p>
-
-<style>
-.billing-tag {
-    padding: 3px 8px;
-    border-radius: 5px;
-    color: rgba(255,255,255,.75);
-    background: rgba(255,255,255,.1);
-    font-size: 9px;
-    font-weight: 750;
-}
-.billing-usage-panel .panel-head {
-    border-bottom: 0;
-    padding-bottom: 8px;
-}
-.billing-usage-pct {
-    margin-left: auto;
-    font-size: 22px;
-    font-weight: 800;
-    color: var(--teal-600);
-}
-.billing-progress-wrap {
-    height: 8px;
-    margin: 0 20px 4px;
-    border-radius: 999px;
-    background: var(--line);
-    overflow: hidden;
-}
-.billing-progress-bar {
-    height: 100%;
-    width: var(--pct, 0%);
-    border-radius: 999px;
-    background: linear-gradient(90deg, var(--teal-500), #34d399);
-    transition: width .4s ease;
-}
-.billing-progress-legend {
-    display: flex;
-    gap: 18px;
-    padding: 6px 20px 16px;
-    color: var(--muted);
-    font-size: 10px;
-}
-.billing-upgrade-panel .panel-head {
-    min-height: auto;
-    padding: 22px 20px;
-    border-bottom: 0;
-    flex-wrap: wrap;
-    gap: 14px;
-}
-</style>
 {% endblock %}

@@ -1,4 +1,42 @@
-{% load static %}<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Developer documentation · AmatoPay</title><link rel="icon" href="{% static 'portal/favicon.svg' %}" type="image/svg+xml"><link rel="stylesheet" href="{% static 'portal/css/tailwind.css' %}"><link rel="stylesheet" href="{% static 'portal/css/docs.css' %}"></head><body><header class="docs-top"><a class="docs-logo" href="/"><span>A</span>Amato<b>Pay</b><i>Docs</i></a><nav><a href="#quickstart">Quickstart</a><a href="#flow">Payment flow</a><a href="#security">Security</a><a href="{% if user.is_authenticated %}{% url 'portal:developers' %}{% else %}{% url 'login' %}?next={% url 'portal:developers' %}{% endif %}" class="console-link">Merchant console →</a></nav></header><div class="docs-layout"><aside><p>GET STARTED</p><a href="#overview" class="active">Overview</a><a href="#quickstart">Quickstart</a><a href="#authentication">Authentication</a><p>PAYMENTS</p><a href="#session">Checkout sessions</a><a href="#flow">Payment lifecycle</a><a href="#webhooks">Webhooks</a><p>TRUST</p><a href="#security">Security model</a><a href="#funds">Protected funds</a></aside><main><section class="docs-hero" id="overview"><span>API VERSION 1</span><h1>Build payments people trust.</h1><p>Accept BIF payments with hosted checkout, real-time status updates, protected funds and dependable merchant settlement.</p><div><a href="#quickstart">Start integrating →</a><a href="mailto:developers@amatopay.bi">Talk to a developer advocate</a></div></section><section id="quickstart"><p class="section-label">QUICKSTART</p><h2>Create your first checkout session</h2><p>Use an API key from your merchant workspace. Every write request should include a unique idempotency key.</p><pre><code><b>curl</b> -X POST https://api.amatopay.bi/api/v1/checkout/sessions/ \
+{% extends "base_public.html" %}
+{% load static %}
+
+{% block title %}Developer Documentation - AmatoPay{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'portal/css/docs.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="docs-layout">
+    <aside>
+        <p>GET STARTED</p>
+        <a href="#overview" class="active">Overview</a>
+        <a href="#quickstart">Quickstart</a>
+        <a href="#authentication">Authentication</a>
+        <p>PAYMENTS</p>
+        <a href="#session">Checkout sessions</a>
+        <a href="#flow">Payment lifecycle</a>
+        <a href="#webhooks">Webhooks</a>
+        <p>TRUST</p>
+        <a href="#security">Security model</a>
+        <a href="#funds">Protected funds</a>
+    </aside>
+    <main>
+        <section class="docs-hero" id="overview">
+            <span>API VERSION 1</span>
+            <h1>Build payments people trust.</h1>
+            <p>Accept BIF payments with hosted checkout, real-time status updates, protected funds and dependable merchant settlement.</p>
+            <div>
+                <a href="#quickstart">Start integrating →</a>
+                <a href="mailto:developers@amatopay.bi">Talk to a developer advocate</a>
+            </div>
+        </section>
+        <section id="quickstart">
+            <p class="section-label">QUICKSTART</p>
+            <h2>Create your first checkout session</h2>
+            <p>Use an API key from your merchant workspace. Every write request should include a unique idempotency key.</p>
+            <pre><code><b>curl</b> -X POST https://api.amatopay.bi/api/v1/checkout/sessions/ \
   -H <i>"Authorization: Bearer sk_••••"</i> \
   -H <i>"Idempotency-Key: order-1001"</i> \
   -H <i>"Content-Type: application/json"</i> \
@@ -47,11 +85,7 @@
     <p class="section-label">PROTECTED FUNDS</p>
     <h2>Delivery-aware settlement</h2>
     <p>AmatoPay tracks fiduciary holds, delivery confirmation, operational reviews, refunds and final settlement as separate auditable states. Domestic transactions use a four-business-day standard protection window; international transactions use fourteen calendar days, subject to compliance review.</p>
-</section>
-</main>
+        </section>
+    </main>
 </div>
-<footer>
-    © 2026 AmatoPay · API v1 · <a href="mailto:developers@amatopay.bi">Developer support</a>
-</footer>
-</body>
-</html>
+{% endblock %}

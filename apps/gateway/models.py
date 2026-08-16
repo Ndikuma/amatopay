@@ -91,10 +91,7 @@ class RTPRequest(UUIDModel, TimeStampedModel):
         "payments.Payment", on_delete=models.PROTECT, related_name="rtp",
         null=True, blank=True,
     )
-    extension_order = models.OneToOneField(
-        "billing.PlanExtensionOrder", on_delete=models.PROTECT,
-        related_name="rtp", null=True, blank=True,
-    )
+
     plan_request = models.OneToOneField(
         "billing.PlanRequest", on_delete=models.PROTECT,
         related_name="rtp", null=True, blank=True,

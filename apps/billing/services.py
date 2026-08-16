@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from decimal import Decimal, ROUND_HALF_UP
 
 from django.core.exceptions import ValidationError
-from django.db import transaction
+from django.db import transaction, models
 from django.utils import timezone
 from django.contrib.auth.hashers import make_password
 
@@ -11,7 +11,6 @@ from apps.gateway.models import RTPRequest
 from apps.payments.models import TransactionFee
 from .models import (
     MerchantPlanAssignment,
-    PlanExtensionOrder,
     PricingPlan,
 )
 
@@ -106,28 +105,6 @@ def calculate_fee(merchant, amount, currency="BIF"):
     return resolve_transaction_fee(merchant, amount, currency).fee_amount
 
 
-@transaction.atomic
-def create_extension_order(assignment, *, initiated_by=None):
-    """
-    Create a PlanExtensionOrder for the given active plan assignment.
-    Raises ValueError when the plan has no extension pack defined.
-    Returns the unsaved-to-gateway order (status=pending).
-    """
-    plan = assignment.plan
-    if not plan.extension_price or not plan.extension_transactions:
-        raise ValueError(
-            f"Plan '{plan.name}' does not have an extension pack configured."
-        )
-    order = PlanExtensionOrder.objects.create(
-        assignment=assignment,
-        plan=plan,
-        extra_transactions=plan.extension_transactions,
-        amount=plan.extension_price,
-        currency=plan.currency,
-        status=PlanExtensionOrder.Status.PENDING,
-        initiated_by=initiated_by,
-    )
-    return order
 
 
 @transaction.atomic
@@ -153,28 +130,8 @@ def activate_requested_plan(plan_request):
     return plan_request
 
 
-@transaction.atomic
-def confirm_extension_paid(order, *, provider_reference, paid_at=None):
-    """Mark an extension order as paid after RTP completes."""
-    from django.utils import timezone as tz
-    order = PlanExtensionOrder.objects.select_for_update().get(pk=order.pk)
-    if order.status == PlanExtensionOrder.Status.PAID:
-        return order
-    order.status = PlanExtensionOrder.Status.PAID
-    order.provider_reference = provider_reference
-    order.paid_at = paid_at or tz.now()
-    order.save(update_fields=["status", "provider_reference", "paid_at", "updated_at"])
-    return order
 
 
-def count_extension_transactions(assignment):
-    """Return total extra transactions credited to this assignment via paid extensions."""
-    from django.db.models import Sum
-    result = PlanExtensionOrder.objects.filter(
-        assignment=assignment,
-        status=PlanExtensionOrder.Status.PAID,
-    ).aggregate(total=Sum("extra_transactions"))
-    return result["total"] or 0
 
 
 @transaction.atomic
@@ -206,44 +163,6 @@ def ensure_checkout_fee_snapshot(session):
     return locked
 
 
-@transaction.atomic
-def initiate_extension_payment(order, *, payer_alias):
-    """
-    Billing workflow: submit RTP to collect payment for a plan extension pack.
-    """
-    from apps.gateway.rtp import call_create_rtp, new_rtp_request_id, persist_rtp_request
-
-    assignment = order.assignment
-    merchant = assignment.merchant
-    req_id = new_rtp_request_id(prefix="AMP-BEXT")
-    payload = {
-        "requestId": req_id,
-        "paymentReference": order.reference,
-        "payerAlias": payer_alias,
-        "payerAliasType": "MOBILE",
-        "merchant": {"id": merchant.merchant_code, "name": merchant.display_name},
-        "order": {
-            "number": order.reference,
-            "description": (
-                f"AmatoPay extension pack: +{order.extra_transactions} transactions "
-                f"for plan {assignment.plan.name}"
-            ),
-        },
-        "amount": str(order.amount),
-        "fee": "0",
-        "totalAmount": str(order.amount),
-        "currency": order.currency,
-    }
-    result = call_create_rtp(payload)
-    persist_rtp_request(
-        request_id=req_id,
-        payload=payload,
-        result=result,
-        extension_order=order,
-    )
-    order.provider_reference = result.get("trxRef") or result.get("providerReference", "")
-    order.save(update_fields=["provider_reference", "updated_at"])
-    return order
 
 
 @transaction.atomic
@@ -285,49 +204,9 @@ def initiate_plan_request_payment(plan_request):
 
 
 @transaction.atomic
-def apply_extension_rtp_status(order, status, data):
-    """Update a billing extension order when its RTP completes or fails."""
-    from .models import PlanExtensionOrder
-
-    if status == "COMPLETED":
-        confirm_extension_paid(
-            order,
-            provider_reference=data.get("trxRef") or data.get("providerReference", ""),
-            paid_at=data.get("completedAt"),
-        )
-    elif status in {"REJECTED", "FAILED", "CANCELLED"}:
-        PlanExtensionOrder.objects.filter(pk=order.pk).update(
-            status=PlanExtensionOrder.Status.FAILED
-        )
-
-
-@transaction.atomic
-def apply_plan_request_rtp_status(plan_request, status, data):
-    """Update a billing plan request when its RTP completes or fails."""
-    from .models import PlanRequest
-
-    if status == "COMPLETED":
-        plan_request.status = PlanRequest.Status.PAID
-        plan_request.provider_reference = (
-            data.get("trxRef") or data.get("providerReference", "")
-        )
-        plan_request.paid_at = data.get("completedAt") or timezone.now()
-        plan_request.save(
-            update_fields=["status", "provider_reference", "paid_at", "updated_at"]
-        )
-        activate_requested_plan(plan_request)
-    elif status in {"REJECTED", "FAILED", "CANCELLED"}:
-        PlanRequest.objects.filter(pk=plan_request.pk).update(
-            status=PlanRequest.Status.FAILED
-        )
-
-
-@transaction.atomic
 def apply_billing_rtp_status(rtp, status, data):
     """Dispatch an RTP status update to the correct billing workflow handler."""
-    if rtp.extension_order_id:
-        apply_extension_rtp_status(rtp.extension_order, status, data)
-    elif rtp.plan_request_id:
+    if rtp.plan_request_id:
         apply_plan_request_rtp_status(rtp.plan_request, status, data)
 
 

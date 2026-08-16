@@ -1,0 +1,136 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" class="h-full scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}AmatoPay{% endblock %}</title>
+    <link rel="icon" href="{% static 'portal/favicon.svg' %}" type="image/svg+xml">
+    <link rel="stylesheet" href="{% static 'portal/css/tailwind.css' %}">
+    <link rel="stylesheet" href="{% static 'portal/css/app.css' %}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="bg-white text-slate-800 antialiased font-sans">
+
+    <!-- Public Header -->
+    <header class="bg-white/95 backdrop-blur-lg sticky top-0 z-40 border-b border-slate-200">
+        <nav class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Logo -->
+                <div class="flex items-center">
+                    <a href="{% url 'home' %}" class="flex-shrink-0 flex items-center gap-2">
+                        <img class="h-8 w-auto" src="{% static 'portal/logo.svg' %}" alt="AmatoPay Logo">
+                    </a>
+                </div>
+
+                <!-- Desktop Navigation - Hidden on mobile/tablet -->
+                <div class="hidden md:flex items-center gap-8">
+                    <a href="{% url 'billing_public:plan_list' %}" class="text-sm font-medium transition-colors {% if request.resolver_match.app_name == 'billing_public' %}text-indigo-600{% else %}text-slate-600 hover:text-indigo-600{% endif %}">Pricing</a>
+                    <a href="{% url 'developer_docs' %}" class="text-sm font-medium transition-colors {% if request.resolver_match.url_name == 'developer_docs' %}text-indigo-600{% else %}text-slate-600 hover:text-indigo-600{% endif %}">Developers</a>
+                </div>
+
+                <!-- Desktop Auth Buttons - Hidden on mobile/tablet -->
+                <div class="hidden md:flex items-center gap-4">
+                    <a href="{% url 'login' %}" class="text-sm font-medium text-slate-600 hover:text-indigo-600 transition-colors">Sign In</a>
+                    <a href="{% url 'merchant_application' %}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">Get Started</a>
+                </div>
+
+                <!-- Mobile Menu Button - Visible on mobile/tablet -->
+                <div class="md:hidden flex items-center">
+                    <button id="mobile-menu-button" class="inline-flex items-center justify-center p-2 rounded-md text-slate-400 hover:text-slate-500 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500" aria-expanded="false">
+                        <span class="sr-only">Open main menu</span>
+                        <!-- Hamburger icon -->
+                        <svg class="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                        <!-- Close icon -->
+                        <svg class="hidden h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Mobile Menu - Hidden on desktop -->
+            <div class="md:hidden hidden" id="mobile-menu" role="navigation" aria-label="Mobile Navigation">
+                <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+                    <a href="{% url 'billing_public:plan_list' %}" class="block px-3 py-2 rounded-md text-base font-medium {% if request.resolver_match.app_name == 'billing_public' %}bg-indigo-50 text-indigo-700{% else %}text-slate-700 hover:bg-slate-50 hover:text-slate-900{% endif %}">Pricing</a>
+                    <a href="{% url 'developer_docs' %}" class="block px-3 py-2 rounded-md text-base font-medium {% if request.resolver_match.url_name == 'developer_docs' %}bg-indigo-50 text-indigo-700{% else %}text-slate-700 hover:bg-slate-50 hover:text-slate-900{% endif %}">Developers</a>
+                </div>
+                <div class="pt-4 pb-3 border-t border-slate-200">
+                    <div class="flex items-center px-5">
+                        <a href="{% url 'login' %}" class="w-full text-center text-base font-medium text-slate-600 hover:text-indigo-600 transition-colors">Sign In</a>
+                    </div>
+                    <div class="mt-3 px-2 space-y-1">
+                        <a href="{% url 'merchant_application' %}" class="block w-full text-center rounded-md px-3 py-2 text-base font-medium text-white bg-indigo-600 hover:bg-indigo-700">Get Started</a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Public Footer -->
+    <footer class="bg-slate-100 border-t border-slate-200">
+        <div class="container mx-auto py-8 px-4 sm:px-6 lg:px-8 text-center">
+            <p class="text-sm text-slate-500">
+                &copy; {% now "Y" %} AmatoPay. All rights reserved.
+            </p>
+        </div>
+    </footer>
+
+    {% block extra_js %}{% endblock %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const menuButton = document.getElementById('mobile-menu-button');
+            const mobileMenu = document.getElementById('mobile-menu');
+            
+            if (menuButton && mobileMenu) {
+                const hamburgerIcon = menuButton.querySelector('svg:first-of-type');
+                const closeIcon = menuButton.querySelector('svg:last-of-type');
+
+                menuButton.addEventListener('click', function () {
+                    const isExpanded = menuButton.getAttribute('aria-expanded') === 'true';
+                    menuButton.setAttribute('aria-expanded', !isExpanded);
+                    mobileMenu.classList.toggle('hidden');
+                    
+                    if (hamburgerIcon && closeIcon) {
+                        hamburgerIcon.classList.toggle('hidden');
+                        closeIcon.classList.toggle('hidden');
+                    }
+                });
+
+                // Close mobile menu when window resizes to desktop
+                window.addEventListener('resize', function () {
+                    if (window.innerWidth >= 768) { // md breakpoint
+                        if (!mobileMenu.classList.contains('hidden')) {
+                            mobileMenu.classList.add('hidden');
+                            menuButton.setAttribute('aria-expanded', 'false');
+                            if (hamburgerIcon && closeIcon) {
+                                hamburgerIcon.classList.remove('hidden');
+                                closeIcon.classList.add('hidden');
+                            }
+                        }
+                    }
+                });
+
+                // Close mobile menu when clicking outside
+                document.addEventListener('click', function (event) {
+                    const isClickInside = menuButton.contains(event.target) || mobileMenu.contains(event.target);
+                    if (!isClickInside && !mobileMenu.classList.contains('hidden')) {
+                        mobileMenu.classList.add('hidden');
+                        menuButton.setAttribute('aria-expanded', 'false');
+                        if (hamburgerIcon && closeIcon) {
+                            hamburgerIcon.classList.remove('hidden');
+                            closeIcon.classList.add('hidden');
+                        }
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
