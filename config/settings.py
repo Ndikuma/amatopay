@@ -156,7 +156,6 @@ UNFOLD = {
                     {"title": "Regulatory reports", "icon": "assured_workload", "link": reverse_lazy("admin:compliance_regulatoryreport_changelist")},
                     {"title": "Webhook deliveries", "icon": "webhook", "link": reverse_lazy("admin:webhooks_webhookdelivery_changelist"), "badge": "config.admin_badges.webhook_failures", "badge_variant": "danger"},
                     {"title": "Webhook attempts", "icon": "history", "link": reverse_lazy("admin:webhooks_webhookattempt_changelist")},
-                    {"title": "Audit trail", "icon": "history", "link": reverse_lazy("admin:core_auditevent_changelist")},
                     {"title": "Security center", "icon": "security", "link": reverse_lazy("security-dashboard"), "badge": "config.admin_badges.security_alerts", "badge_variant": "danger"},
                 ],
             },

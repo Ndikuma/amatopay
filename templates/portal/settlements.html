@@ -1,7 +1,8 @@
-{% extends 'portal/base.html' %}
+{% extends 'base.html' %}
 {% block title %}Settlements · AmatoPay{% endblock %}
 {% block content %}
-    <header class="page-header">
+<main id="main-content" tabindex="-1" class="p-4 sm:p-6 lg:p-8">
+    <header class="page-header"> {# This header is inside the <main> provided by base.html #}
         <div>
             <p class="eyebrow">Your money</p>
             <h1>Settlements</h1>
@@ -42,4 +43,5 @@
         </table>
     </div>
 </section>
+</main>
 {% endblock %}

@@ -1,7 +1,24 @@
-{% extends 'portal/base.html' %}
+{% extends 'base.html' %}
 {% block title %}Overview · AmatoPay{% endblock %}
 {% block content %}
-    <header class="page-header">
+<main id="main-content" tabindex="-1" class="p-4 sm:p-6 lg:p-8">
+    <!-- Messages -->
+    {% if messages %}
+    <div class="portal-messages space-y-3 mb-6">
+        {% for message in messages %}
+        <div class="portal-message portal-message-{{ message.tags|default:'info' }} flex items-center justify-between p-4 rounded-lg shadow-sm">
+            <span class="flex items-center gap-2">{{ message }}</span>
+            <button class="text-slate-400 hover:text-slate-600" onclick="this.parentElement.remove()">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <header class="page-header"> {# This header is inside the <main> provided by base.html #}
         <div>
             <p class="eyebrow">Merchant workspace</p>
             <h1>Good to see you.</h1>

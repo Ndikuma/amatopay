@@ -1,11 +1,13 @@
-{% extends 'portal/base.html' %}
+{% extends 'base.html' %}
 {% block title %}Workspace required · AmatoPay{% endblock %}
 {% block content %}
-    <section class="center-state">
+<main id="main-content" tabindex="-1" class="p-4 sm:p-6 lg:p-8">
+    <section class="center-state"> {# This section is inside the <main> provided by base.html #}
         <div class="center-state-icon">A</div>
         <p class="eyebrow">Account setup</p>
         <h1>No merchant workspace</h1>
         <p>Your user account is ready, but it has not been connected to a merchant workspace yet.</p>
         <a class="button button-primary" href="mailto:support@amatotech.com">Contact support</a>
     </section>
+</main>
 {% endblock %}

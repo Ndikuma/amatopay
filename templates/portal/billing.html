@@ -1,8 +1,9 @@
-{% extends "portal/base.html" %}
+{% extends "base.html" %}
 
 {% block page_title %}Billing & Plan{% endblock %}
 
 {% block content %}
+<div id="main-content" tabindex="-1" class="p-4 sm:p-6 lg:p-8"> {# Changed from <main> to <div> as base.html provides the <main> #}
 <div class="space-y-8">
     <div class="bg-white shadow-sm ring-1 ring-slate-900/5 rounded-xl">
         <div class="p-6">
@@ -55,5 +56,5 @@
             </div>
         </div>
     </div>
-</div>
+</div> {# End of div that replaced <main> #}
 {% endblock %}
