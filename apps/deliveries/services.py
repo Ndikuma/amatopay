@@ -40,6 +40,7 @@ def _validate_release_code(payment, secure_code):
 
 def _erase_release_code(payment):
     payment.release_code_hash = ""
+    payment.save(update_fields=["release_code_hash", "updated_at"])
     if hasattr(payment, "rtp"):
         payment.rtp.release_code_ciphertext = ""
         payment.rtp.save(update_fields=["release_code_ciphertext", "updated_at"])

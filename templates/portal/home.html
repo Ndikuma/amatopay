@@ -1,4 +1,4 @@
-{% extends "base_public.html" %}
+{% extends "base.html" %}
 {% load static %}
 
 {% block title %}AmatoPay — Payments that move business forward{% endblock %}
@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="{% static 'portal/css/home.css' %}">
 {% endblock %}
 
-{% block content %}
+{% block public_content %}
 <section class="hero"><div class="hero-copy"><div class="badge"><i></i> Built for modern African commerce</div><h1>Payments made<br><em>beautifully simple.</em></h1><p>Accept, protect and manage every payment from one powerful platform—built for businesses moving Burundi forward.</p><div class="hero-actions"><a class="primary"
 href="{% if user.is_authenticated %}{% url 'portal:dashboard' %}{% else %}#contact{% endif %}">Get started <span>→</span></a><a class="play" href="#how"><b>▶</b> See how it works</a></div><div class="trust"><span>Secure by design</span><span>Fast BIF settlements</span><span>Developer friendly</span></div></div>
         <div class="hero-visual">
