@@ -4,6 +4,7 @@ from django.core.management import call_command
 from django.test import TestCase
 
 from apps.billing.models import PricingPlan
+from apps.billing.management.commands.seed_pricing_plans import PLANS
 
 
 class SeedPricingPlansCommandTests(TestCase):
@@ -13,9 +14,9 @@ class SeedPricingPlansCommandTests(TestCase):
         call_command("seed_pricing_plans", stdout=output)
         call_command("seed_pricing_plans", stdout=output)
 
-        self.assertEqual(PricingPlan.objects.count(), 4)
+        self.assertEqual(PricingPlan.objects.count(), len(PLANS))
         starter = PricingPlan.objects.get(code="starter")
-        enterprise = PricingPlan.objects.get(code="enterprise")
-        self.assertEqual(starter.included_transactions_per_month, 500)
-        self.assertIsNone(enterprise.included_transactions_per_month)
-        self.assertIn("0 created, 4 updated", output.getvalue())
+        unlimited = PricingPlan.objects.get(code="unlimited")
+        self.assertEqual(starter.included_transactions_per_month, 160)
+        self.assertIsNone(unlimited.included_transactions_per_month)
+        self.assertIn(f"0 created, {len(PLANS)} updated", output.getvalue())

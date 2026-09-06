@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
 from django.test import TestCase
+from django.urls import reverse
 from django.utils import timezone
 from datetime import timedelta
 from decimal import Decimal
@@ -37,12 +38,48 @@ class PortalAccessTests(TestCase):
         self.assertContains(home, "Payments made")
         self.assertContains(home, "beautifully simple")
         self.assertContains(home, 'href="#contact"')
-        self.assertEqual(self.client.get("/developers/").status_code, 200)
         self.assertEqual(self.client.get("/account/sign-in/").status_code, 200)
+        # Public "Confirm a delivery" entry point is linked from the header and reachable.
+        self.assertContains(home, 'href="{}"'.format(reverse("delivery_lookup")))
+        lookup = self.client.get("/deliveries/")
+        self.assertEqual(lookup.status_code, 200)
+        self.assertContains(lookup, "Confirm a delivery")
+        self.assertContains(lookup, "How protection works")
+
+    def test_support_contact_is_sourced_from_settings(self):
+        from django.test import override_settings
+
+        with override_settings(SUPPORT_EMAIL="help@example.test", COMPANY_NAME="Testco"):
+            response = self.client.get("/deliveries/")
+            self.assertContains(response, "mailto:help@example.test")
+            self.assertNotContains(response, "support@amatopay.bi")
+
+    def test_developer_docs_render_for_anonymous_and_authenticated_visitors(self):
+        anon = self.client.get("/developers/")
+        self.assertEqual(anon.status_code, 200)
+        self.assertContains(anon, "docs-page")
+        self.assertContains(anon, "Create your first checkout session")
+        self.assertContains(anon, 'href="{}"'.format(reverse("developer_docs")))  # header link
+
+        self.client.force_login(self.user)
+        authed = self.client.get("/developers/")
+        self.assertEqual(authed.status_code, 200)
+        self.assertContains(authed, "Create your first checkout session")
+
+    def test_merchant_application_is_a_stepped_form_with_uploads(self):
+        response = self.client.get("/merchants/apply/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "apply-page")
+        self.assertContains(response, 'enctype="multipart/form-data"')
+        self.assertContains(response, 'name="registration_document"')
+        self.assertContains(response, "you can upload this during onboarding")
+        # Multi-step wizard: one <fieldset data-step> per step + progress rail.
+        self.assertContains(response, "apply-progress")
+        self.assertEqual(response.content.decode().count("data-step>"), 6)
 
     def test_private_workspace_redirects_to_merchant_login(self):
         response = self.client.get("/dashboard/billing/")
-        self.assertRedirects(response, "/account/sign-in/?next=/dashboard/")
+        self.assertRedirects(response, "/account/sign-in/?next=/dashboard/billing/")
 
     def test_login_is_recorded_for_direct_merchant_owner(self):
         self.client.login(username="owner", password="safe-test-pass-2026")
@@ -60,6 +97,12 @@ class PortalAccessTests(TestCase):
         self.assertEqual(self.client.get("/dashboard/settlements/").status_code, 200)
 
     def test_billing_page_shows_pay_as_you_go_pricing(self):
+        PricingPlan.objects.create(
+            code="pay-as-you-go",
+            name="Pay as you go",
+            currency="BIF",
+            transaction_fee_percentage=Decimal("3"),
+        )
         self.client.force_login(self.user)
 
         response = self.client.get("/dashboard/billing/")

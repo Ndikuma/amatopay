@@ -52,7 +52,7 @@ class MobileCashGatewayTests(SimpleTestCase):
         self.assertEqual(result["account"]["account_type"], "CURRENT")
         self.assertEqual(result["account"]["servicer_code"], "CECFBI")
 
-    def test_rtp_uses_total_amount_and_normalizes_reference(self):
+    def test_collection_uses_total_amount_and_normalizes_reference(self):
         self.gateway._session.request.return_value = response(
             200,
             {
@@ -66,14 +66,14 @@ class MobileCashGatewayTests(SimpleTestCase):
             },
         )
         payload = {
-            "requestId": "AMP-RTP-1",
+            "requestId": "AMP-COLL-1",
             "payerAlias": "+25779000000",
             "amount": "1000.00",
             "totalAmount": "1050.00",
             "order": {"description": "Order 1"},
         }
 
-        result = self.gateway.create_rtp(payload)
+        result = self.gateway.create_collection(payload)
 
         self.assertEqual(result["trxRef"], "IPS-123")
         request = self.gateway._session.request.call_args
@@ -170,9 +170,9 @@ class MobileCashGatewayTests(SimpleTestCase):
         )
 
         with self.assertRaisesRegex(Exception, "did not contain trxRef"):
-            self.gateway.create_rtp(
+            self.gateway.create_collection(
                 {
-                    "requestId": "AMP-RTP-MISSING",
+                    "requestId": "AMP-COLL-MISSING",
                     "payerAlias": "+25779000000",
                     "amount": "1000.00",
                 }

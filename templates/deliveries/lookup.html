@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Confirm a delivery · AmatoPay{% endblock %}
+
+{% block extra_css %}<link rel="stylesheet" href="{% static 'portal/css/delivery.css' %}">{% endblock %}
+
+{% block public_content %}
+<div class="dp">
+    <span class="dp-badge">Protected by AmatoPay</span>
+
+    <div class="dp-card">
+        <h1>Confirm a delivery</h1>
+        <p class="lede">
+            Enter the payment reference from your AmatoPay SMS to confirm you received
+            your order — or report a problem. Your funds stay protected until you decide.
+        </p>
+
+        {% if error %}<div class="dp-alert error">{{ error }}</div>{% endif %}
+
+        <form method="post" novalidate>
+            {% csrf_token %}
+            <div class="dp-field">
+                <label for="payment_reference">Payment reference</label>
+                <input type="text" id="payment_reference" name="payment_reference"
+                       autocomplete="off" spellcheck="false" autocapitalize="characters"
+                       placeholder="AMP-PAY-XXXXXXXXXXXXXXXX" required>
+                <small>It starts with <b>AMP-PAY-</b> and is in the SMS AmatoPay sent when you paid.</small>
+            </div>
+            <button type="submit" class="dp-btn">Continue</button>
+        </form>
+    </div>
+
+    <div class="dp-card">
+        <span class="dp-badge">How protection works</span>
+        <ol class="dp-steps">
+            <li><b>1</b><span><strong>You pay</strong>AmatoPay collects the payment and holds it in a separate protected account.</span></li>
+            <li><b>2</b><span><strong>Merchant delivers</strong>You get your order or service.</span></li>
+            <li><b>3</b><span><strong>You decide</strong>Confirm delivery with your six-digit code, or report a problem.</span></li>
+            <li><b>4</b><span><strong>Funds move</strong>Only your confirmation — or an AmatoPay review — releases the money.</span></li>
+        </ol>
+    </div>
+
+    <p class="dp-foot">Lost your reference? Contact the merchant, or <a href="mailto:{{ support_email }}">AmatoPay support</a>.</p>
+</div>
+{% endblock %}

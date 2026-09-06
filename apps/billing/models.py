@@ -128,7 +128,7 @@ class MerchantPlanAssignment(UUIDModel, TimeStampedModel):
 
 
 class PlanRequest(UUIDModel, TimeStampedModel):
-    """Records a merchant's request to be assigned a pricing plan, paid via RTP."""
+    """Records a merchant's request to be assigned a pricing plan, paid via a collection."""
 
     class Status(models.TextChoices):
         PENDING_PAYMENT = "pending_payment", "Pending payment"

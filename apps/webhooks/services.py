@@ -3,6 +3,7 @@ from datetime import timedelta
 import requests
 from django.db import transaction
 from django.utils import timezone
+from rest_framework.exceptions import ValidationError
 from .models import WebhookAttempt, WebhookEvent, WebhookDelivery
 from .security import validate_webhook_url
 
@@ -31,6 +32,18 @@ def emit_event(merchant, event_type, data, object_type="", object_id=""):
 
 MAX_ATTEMPTS = 8
 RETRY_DELAYS_SECONDS = (5, 30, 300, 1800, 3600, 7200, 14400)
+RESPONSE_BODY_LIMIT = 8000
+
+
+def _response_headers(response):
+    """A plain, size-bounded dict of the merchant's response headers."""
+    raw = getattr(response, "headers", None)
+    if not raw:
+        return {}
+    try:
+        return {str(k): str(v)[:1000] for k, v in dict(raw).items()}
+    except Exception:
+        return {}
 
 
 @transaction.atomic
@@ -55,10 +68,34 @@ def deliver(delivery):
     started = time.monotonic()
     response_status = None
     response_body = ""
+    response_headers = {}
     error = ""
     succeeded = False
+
     try:
         validate_webhook_url(delivery.endpoint.url, resolve_dns=True)
+    except ValidationError as exc:
+        # A URL that fails SSRF/scheme validation will never succeed — fail hard,
+        # do not burn retry attempts on it.
+        delivery.attempts += 1
+        delivery.status = delivery.Status.FAILED
+        delivery.last_error = str(getattr(exc, "detail", exc))[:4000]
+        delivery.next_retry_at = None
+        delivery.save()
+        WebhookAttempt.objects.create(
+            delivery=delivery,
+            attempt_number=delivery.attempts,
+            request_url=delivery.endpoint.url,
+            request_headers={},
+            request_body=delivery.event.payload,
+            response_headers={},
+            error=delivery.last_error,
+            duration_ms=max(0, round((time.monotonic() - started) * 1000)),
+            succeeded=False,
+        )
+        return delivery
+
+    try:
         r = requests.post(
             delivery.endpoint.url,
             data=payload,
@@ -70,7 +107,8 @@ def deliver(delivery):
             timeout=10,
         )
         response_status = r.status_code
-        response_body = r.text[:4000]
+        response_body = (r.text or "")[:RESPONSE_BODY_LIMIT]
+        response_headers = _response_headers(r)
         delivery.attempts += 1
         delivery.last_status_code = r.status_code
         if 200 <= r.status_code < 300:
@@ -115,6 +153,8 @@ def deliver(delivery):
             if delivery.attempts < MAX_ATTEMPTS
             else None
         )
+    delivery.last_response_body = response_body
+    delivery.last_response_headers = response_headers
     delivery.save()
     WebhookAttempt.objects.create(
         delivery=delivery,
@@ -127,6 +167,7 @@ def deliver(delivery):
         },
         request_body=delivery.event.payload,
         response_status=response_status,
+        response_headers=response_headers,
         response_body=response_body,
         error=error,
         duration_ms=max(0, round((time.monotonic() - started) * 1000)),

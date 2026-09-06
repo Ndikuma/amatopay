@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Delivery confirmed · AmatoPay{% endblock %}
+
+{% block extra_css %}<link rel="stylesheet" href="{% static 'portal/css/delivery.css' %}">{% endblock %}
+
+{% block public_content %}
+<div class="dp">
+    <span class="dp-badge">Protected by AmatoPay</span>
+
+    <div class="dp-card dp-outcome">
+        <div class="mark" aria-hidden="true">&#10003;</div>
+        <h1>Delivery confirmed</h1>
+        <p>
+            Thank you. The protected funds are now being released to
+            <b>{{ payment.merchant.display_name }}</b>. Nothing more is needed from you.
+        </p>
+
+        <ul class="dp-track" aria-hidden="true">
+            <li class="done"><i></i><span>Paid</span></li>
+            <li class="done"><i></i><span>Protected</span></li>
+            <li class="done"><i></i><span>Confirmed</span></li>
+            <li class="pending"><i></i><span>Releasing</span></li>
+        </ul>
+
+        <p class="dp-foot">
+            Payment reference<br><span class="dp-ref">{{ payment.reference }}</span><br>
+            Keep it in case you need to contact AmatoPay support.
+        </p>
+    </div>
+</div>
+{% endblock %}

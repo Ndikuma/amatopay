@@ -3,7 +3,6 @@ from .models import (
     Merchant,
     MerchantKYB,
     MerchantDocument,
-    BeneficialOwner,
     MerchantSettlementAccount,
 )
 
@@ -25,13 +24,6 @@ class MerchantKYBSerializer(serializers.ModelSerializer):
 class MerchantDocumentSerializer(serializers.ModelSerializer):
     class Meta:
         model = MerchantDocument
-        fields = "__all__"
-        read_only_fields = ["id", "created_at", "updated_at"]
-
-
-class BeneficialOwnerSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = BeneficialOwner
         fields = "__all__"
         read_only_fields = ["id", "created_at", "updated_at"]
 

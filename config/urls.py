@@ -5,8 +5,18 @@ from django.urls import include, path
 from django.views.generic import RedirectView
 from django.contrib.auth import views as auth_views
 
-from apps.portal.public_views import docs, home, pay
-from apps.merchants.public_views import apply as merchant_apply, received as merchant_received
+from apps.merchants.views import MerchantPingView
+from apps.portal.views import (
+    PlanListView,
+    delivery_decision,
+    delivery_lookup,
+    docs,
+    home,
+    merchant_application_received,
+    merchant_apply,
+    pay,
+    request_plan_view,
+)
 from config.health import live, ready
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 API_PREFIX = "api/v1/"
@@ -20,8 +30,20 @@ urlpatterns = [
     ),
     path("", home, name="home"),
     path("merchants/apply/", merchant_apply, name="merchant_application"),
-    path("merchants/apply/received/", merchant_received, name="merchant_application_received"),
+    path(
+        "merchants/apply/received/",
+        merchant_application_received,
+        name="merchant_application_received",
+    ),
     path("developers/", docs, name="developer_docs"),
+    path("deliveries/", delivery_lookup, name="delivery_lookup"),
+    path("deliveries/<str:reference>/", delivery_decision, name="delivery_decision"),
+    path("billing/plans/", PlanListView.as_view(), name="plan_list"),
+    path(
+        "billing/plans/request/<uuid:plan_id>/",
+        request_plan_view,
+        name="request_plan",
+    ),
     path(
         "account/sign-in/",
         auth_views.LoginView.as_view(
@@ -65,10 +87,10 @@ urlpatterns = [
     path("security/", include("apps.security.urls")),
     path("dashboard/", include("apps.portal.urls")),
     path("pay/<uuid:session_id>/", pay, name="hosted_checkout"),
+    path(f"{API_PREFIX}ping/", MerchantPingView.as_view(), name="merchant_ping"),
     path(f"{API_PREFIX}checkout/", include("apps.checkout.urls")),
     path(f"{API_PREFIX}payments/", include("apps.payments.urls")),
-    path("billing/", include("apps.billing.urls")),
-    path("billing/", include("apps.billing.public_urls")),
+    path(f"{API_PREFIX}fees/", include("apps.billing.urls")),
 ]
 
 urlpatterns += [

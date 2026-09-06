@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Confirm your delivery · AmatoPay{% endblock %}
+
+{% block extra_css %}<link rel="stylesheet" href="{% static 'portal/css/delivery.css' %}">{% endblock %}
+
+{% block public_content %}
+<div class="dp" id="dp">
+    <span class="dp-badge">Protected by AmatoPay</span>
+
+    <div class="dp-card">
+        <h1>Confirm your delivery</h1>
+        <p class="lede">
+            Your payment to <b>{{ merchant.display_name }}</b> is protected. Confirm you
+            received your order to release the funds.
+            If you did not receive it or there is a problem, report it — the funds stay frozen while AmatoPay reviews.
+        </p>
+
+        <div class="dp-order">
+            <div><span>Merchant</span><b>{{ merchant.display_name }}</b></div>
+            {% if payment.session.order_number %}<div><span>Order</span><b>{{ payment.session.order_number }}</b></div>{% endif %}
+            {% if payment.session.description %}<div><span>Description</span><b>{{ payment.session.description }}</b></div>{% endif %}
+            <div class="amount"><span>Protected amount</span><b>{{ payment.amount|floatformat:0 }} {{ payment.currency }}</b></div>
+            {% if payment.paid_at %}<div><span>Protected since</span><b>{{ payment.paid_at|date:"d M Y" }}</b></div>{% endif %}
+            {% if deadline %}<div><span>Protection deadline</span><b>{{ deadline|date:"d M Y, H:i" }}</b></div>{% endif %}
+        </div>
+
+        {% if code_locked %}
+        <div class="dp-alert error">
+            Code entry is locked after too many incorrect attempts. Contact
+            <a href="mailto:{{ support_email }}">AmatoPay support</a> with your payment reference.
+        </div>
+        {% else %}
+
+        {% if error %}<div class="dp-alert error">{{ error }}</div>{% endif %}
+        {% if not merchant_ready %}
+        <div class="dp-alert info">
+            The merchant is still finishing their payout setup. You can report a problem
+            now; you'll be able to confirm delivery shortly. Your funds stay protected.
+        </div>
+        {% endif %}
+
+        <form method="post" novalidate id="dp-form">
+            {% csrf_token %}
+
+            <div class="dp-choices">
+                <label class="dp-choice{% if not merchant_ready %} is-disabled{% endif %}">
+                    <input type="radio" name="decision" value="confirm"
+                           {% if not merchant_ready %}disabled{% endif %}
+                           {% if submitted_decision == "confirm" %}checked{% endif %}>
+                    <span>
+                        <strong>I received my order</strong>
+                        <small>Release the protected funds to the merchant.</small>
+                    </span>
+                </label>
+                <label class="dp-choice">
+                    <input type="radio" name="decision" value="report"
+                           {% if submitted_decision == "report" %}checked{% endif %}>
+                    <span>
+                        <strong>I have a problem with this order</strong>
+                        <small>Freeze the funds and open an AmatoPay investigation.</small>
+                    </span>
+                </label>
+            </div>
+
+            <div class="dp-reveal" data-reveal="report" hidden>
+                <div class="dp-field">
+                    <label for="reason">What went wrong?</label>
+                    <select id="reason" name="reason">
+                        {% for value, label in reasons %}
+                        <option value="{{ value }}" {% if selected_reason == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="dp-field">
+                    <label for="description">Describe the problem</label>
+                    <textarea id="description" name="description" placeholder="Tell AmatoPay what happened…">{{ description }}</textarea>
+                </div>
+            </div>
+
+            <div class="dp-reveal" data-reveal="any" hidden>
+                <div class="dp-field">
+                    <label for="secure_code">Your six-digit AmatoPay code</label>
+                    <input type="text" id="secure_code" name="secure_code" class="dp-code"
+                           inputmode="numeric" autocomplete="one-time-code"
+                           pattern="[0-9]{6}" maxlength="6" placeholder="••••••">
+                    <small>From your AmatoPay SMS. Never share it with anyone but this page.</small>
+                </div>
+                <button type="submit" class="dp-btn">Submit securely</button>
+            </div>
+        </form>
+        {% endif %}
+    </div>
+
+    <p class="dp-foot">Investigated funds stay protected until AmatoPay completes its review.</p>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var form = document.getElementById('dp-form');
+    if (!form) return;
+    var reveals = form.querySelectorAll('[data-reveal]');
+    function sync() {
+        var choice = form.querySelector('input[name="decision"]:checked');
+        var value = choice ? choice.value : null;
+        reveals.forEach(function (block) {
+            var mode = block.dataset.reveal;
+            block.hidden = !(value && (mode === 'any' || mode === value));
+        });
+        var code = document.getElementById('secure_code');
+        if (code) code.required = !!value;
+    }
+    form.querySelectorAll('input[name="decision"]').forEach(function (el) {
+        el.addEventListener('change', sync);
+    });
+    sync();
+});
+</script>
+{% endblock %}

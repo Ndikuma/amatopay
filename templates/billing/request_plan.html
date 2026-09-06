@@ -1,64 +1,56 @@
 {% extends "base.html" %}
+{% load static %}
 
-{% block title %}Request {{ plan.name }} Plan - AmatoPay{% endblock %}
+{% block title %}Request {{ plan.name }} · AmatoPay{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'portal/css/pricing.css' %}">
+{% endblock %}
 
 {% block public_content %}
-    <div class="container mx-auto py-16 px-4 sm:px-6 lg:px-8">
-        <div class="max-w-2xl mx-auto">
-            <div class="bg-white rounded-2xl shadow-2xl p-8">
-                <div class="text-center mb-10">
-                    <h1 class="text-4xl font-extrabold text-slate-900">Request Plan: {{ plan.name }}</h1>
-                    <p class="text-xl text-slate-600 mt-4">Confirm your details to proceed with the plan request.</p>
-                </div>
+<section class="plan-request">
+    <a class="plan-back" href="{% url 'plan_list' %}">&larr; All plans</a>
+    <h1>Request the {{ plan.name }} plan</h1>
+    <p>Confirm the mobile money number that should be charged for the monthly subscription.</p>
 
-                <div class="bg-slate-100 rounded-lg p-6 mb-8">
-                    <h2 class="text-2xl font-bold text-slate-900">{{ plan.name }}</h2>
-                    <p class="text-slate-600 mt-2">{{ plan.description }}</p>
-                    <div class="mt-6 text-3xl font-extrabold text-slate-900">
-                        {% if plan.monthly_price is not None %}
-                            BIF {{ plan.monthly_price|floatformat:0 }} / month
-                        {% else %}
-                            Contract Pricing
-                        {% endif %}
-                    </div>
-                </div>
-
-                <form method="post" class="space-y-6">
-                    {% csrf_token %}
-                    
-                    <div>
-                        <label for="{{ form.payer_alias.id_for_label }}" class="block text-sm font-medium text-slate-700 text-slate-200">{{ form.payer_alias.label }}</label>
-                        <div class="mt-1 text-slate-900">
-                            {{ form.payer_alias }}
-                        </div>
-                        {% if form.payer_alias.help_text %}
-                        <p class="mt-2 text-sm text-slate-500">{{ form.payer_alias.help_text }}</p>
-                        {% endif %}
-                        {% for error in form.payer_alias.errors %}
-                        <p class="mt-2 text-sm text-red-600">{{ error }}</p>
-                        {% endfor %}
-                    </div>
-
-                    <div>
-                        <label for="{{ form.note.id_for_label }}" class="block text-sm font-medium text-slate-700 text-slate-200">{{ form.note.label }}</label>
-                        <div class="mt-1 text-slate-900">
-                            {{ form.note }}
-                        </div>
-                        {% if form.note.help_text %}
-                        <p class="mt-2 text-sm text-slate-500">{{ form.note.help_text }}</p>
-                        {% endif %}
-                        {% for error in form.note.errors %}
-                        <p class="mt-2 text-sm text-red-600">{{ error }}</p>
-                        {% endfor %}
-                    </div>
-
-                    <div class="pt-6">
-                        <button type="submit" class="w-full bg-indigo-600 text-white font-semibold rounded-lg py-3 px-4 hover:bg-indigo-700 transition-colors duration-300">
-                            Submit Request & Pay
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
+    {% if messages %}
+    <div class="form-messages">
+        {% for message in messages %}<div class="msg">{{ message }}</div>{% endfor %}
     </div>
+    {% endif %}
+
+    <div class="plan-summary">
+        <h2>{{ plan.name }}</h2>
+        <p>{{ plan.description }}</p>
+        <div class="price">
+            {% if plan.monthly_price is not None %}
+                {{ plan.monthly_price|floatformat:0 }} {{ plan.currency }} / month
+            {% else %}
+                Contract pricing
+            {% endif %}
+        </div>
+        {% if plan.included_transactions_per_month %}
+        <p class="allowance"><b>{{ plan.included_transactions_per_month }}</b> payments included each month · 0% per-transaction fee</p>
+        {% elif plan.monthly_price %}
+        <p class="allowance"><b>Unlimited</b> payments each month · 0% per-transaction fee</p>
+        {% endif %}
+    </div>
+
+    <form method="post" class="plan-form">
+        {% csrf_token %}
+        {% for field in form %}
+        <div class="field">
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% if field.help_text %}<p class="help">{{ field.help_text }}</p>{% endif %}
+            {% for error in field.errors %}<p class="error">{{ error }}</p>{% endfor %}
+        </div>
+        {% endfor %}
+        <button type="submit">Submit request &amp; pay</button>
+        <p class="plan-form-note">
+            After you submit, approve the payment request on your phone. Your plan activates as
+            soon as the payment clears — you can track it from <a href="{% url 'portal:billing' %}">Billing</a>.
+        </p>
+    </form>
+</section>
 {% endblock %}

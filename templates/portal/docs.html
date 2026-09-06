@@ -1,190 +1,45 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Developer Documentation - AmatoPay{% endblock %}
+{% block title %}Developer documentation · AmatoPay{% endblock %}
+{% block page_title %}Developer documentation{% endblock %}
 
-{% block extra_css %}
-    <link rel="stylesheet" href="{% static 'portal/css/docs.css' %}">
-{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'portal/css/docs.css' %}">{% endblock %}
 
-{% block public_content %}
-<div class="bg-white">
-    <div class="container mx-auto">
-        <div class="docs-layout">
-            <aside class="docs-sidebar">
-                <div class="sticky top-24">
-                    <p>GET STARTED</p>
-                    <nav id="docs-nav">
-                        <a href="#overview" class="active">Overview</a>
-                        <a href="#quickstart">Quickstart</a>
-                        <a href="#authentication">Authentication</a>
-                    </nav>
-                    <p>PAYMENTS</p>
-                    <nav id="docs-nav-payments">
-                        <a href="#flow">Payment Lifecycle</a>
-                        <a href="#webhooks">Webhooks</a>
-                    </nav>
-                    <p>TRUST</p>
-                    <nav id="docs-nav-trust">
-                        <a href="#security">Security Model</a>
-                        <a href="#funds">Protected Funds</a>
-                    </nav>
-                </div>
-            </aside>
-            <main class="docs-content">
-                <section class="docs-hero" id="overview">
-                    <span>API VERSION 1</span>
-                    <h1>Build payments people trust.</h1>
-                    <p>Accept BIF payments with hosted checkout, real-time status updates, protected funds and dependable merchant settlement.</p>
-                    <div>
-                        <a href="#quickstart">Start integrating →</a>
-                        <a href="mailto:developers@amatopay.bi">Talk to a developer advocate</a>
-                    </div>
-                </section>
-
-                            <section id="quickstart">
-                                <p class="section-label">QUICKSTART</p>
-                                <h2>Create your first checkout session</h2>
-                                <p>To begin, make a POST request from your server to our `checkout/sessions` endpoint. You'll need an API key from your merchant workspace. Every write request should also include a unique `Idempotency-Key` to prevent duplicate transactions.</p>
-                                
-                                <div class="code-block-container">
-                                    <div class="code-block-header">
-                                        <span>POST /api/v1/checkout/sessions/</span>
-                                        <button class="copy-button" data-copy-target="#curl-request">
-                                            <svg class="copy-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                                            <svg class="check-icon hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                                            <span class="copy-text">Copy</span>
-                                        </button>
-                                    </div>
-                                    <pre id="curl-request"><code><b>curl</b> -X POST https://api.amatopay.bi/api/v1/checkout/sessions/ \
-            -H <i>"Authorization: Bearer sk_••••"</i> \
-            -H <i>"Idempotency-Key: order-1001"</i> \
-            -H <i>"Content-Type: application/json"</i> \
-            -d '{
-                "order_number": "ORDER-1001",
-                "description": "Online purchase",
-                "amount": "50000.00",
-                "currency": "BIF",
-                "payer_alias": "+25779000000",
-                "return_url": "https://merchant.bi/payment/result"
-            }'</code></pre>
-                                </div>
-
-                                <p class="mt-6">AmatoPay will respond with a session object containing a unique ID and a `checkout_url`.</p>
-                                <div class="code-block-container">
-                                    <div class="code-block-header">
-                                        <span>RESPONSE</span>
-                                    </div>
-                                    <pre><code>{
-            "id": "sess_1a2b3c4d5e6f",
-            "checkout_url": "https://checkout.amatopay.bi/s/sess_1a2b3c4d5e6f",
-            "status": "pending",
-            "amount": "50000.00",
-            "currency": "BIF",
-            "order_number": "ORDER-1001"
-            }</code></pre>
-                                </div>
-
-                                <div class="next-step">
-                                    <p class="font-semibold">Next Step</p>
-                                    <p>Redirect your customer to the `checkout_url` to complete the payment.</p>
-                                </div>
-                            </section>
-
-                <div class="docs-grid">
-                    <section id="authentication">
-                        <span class="doc-icon">⌁</span>
-                        <h3>Authentication</h3>
-                        <p>Authenticate server-to-server calls with a secret API key, available in your <a href="{% url 'portal:developers' %}">Developer Settings</a>. Never expose secret keys in browser or mobile code.</p>
-                        <code>Authorization: Bearer sk_••••</code>
-                    </section>
-                    <section id="webhooks">
-                        <span class="doc-icon">↗</span>
-                        <h3>Webhooks</h3>
-                        <p>Use signed webhooks as the source of truth for asynchronous payment, settlement, and refund updates. Configure your endpoints in the dashboard.</p>
-                        <code>payment.paid · settlement.completed</code>
-                    </section>
-                </div>
-
-                <section id="flow">
-                    <p class="section-label">PAYMENT LIFECYCLE</p>
-                    <h2>One traceable flow from checkout to payout</h2>
-                    <ol class="api-flow">
-                        <li><b>1</b><span><strong>Verify Customer</strong><small>Customer identity is verified to ensure secure and compliant transactions.</small></span></li>
-                        <li><b>2</b><span><strong>Create Session</strong><small>Your server sends order, customer, and amount details to AmatoPay.</small></span></li>
-                        <li><b>3</b><span><strong>Customer Pays</strong><small>Redirect the customer to the <code>checkout_url</code> where AmatoPay handles the secure payment flow.</small></span></li>
-                        <li><b>4</b><span><strong>Funds are Protected</strong><small>Paid funds are held separately pending delivery confirmation, building trust with your customer.</small></span></li>
-                        <li><b>5</b><span><strong>Settlement Completes</strong><small>Once delivery is confirmed, released net funds are paid out to your verified merchant account.</small></span></li>
-                    </ol>
-                </section>
-
-                <section class="security-callout" id="security">
-                    <span class="doc-icon">◇</span>
-                    <div>
-                        <p class="section-label">SECURITY</p>
-                        <h2>Design for verification, not assumptions.</h2>
-                        <p>Never treat the browser `return_url` as proof of payment. The customer may have closed the browser before payment was complete. Always verify the payment status using the API or a signed webhook before fulfilling an order.</p>
-                    </div>
-                </section>
-
-                <section id="funds">
-                    <p class="section-label">PROTECTED FUNDS</p>
-                    <h2>Delivery-aware settlement</h2>
-                    <p>AmatoPay tracks fiduciary holds, delivery confirmation, operational reviews, refunds, and final settlement as separate auditable states. Domestic transactions use a four-business-day standard protection window; international transactions use fourteen calendar days, subject to compliance review.</p>
-                </section>
-            </main>
-        </div>
-    </div>
-</div>
-{% endblock %}
+{% block public_content %}{% include "portal/_docs_body.html" %}{% endblock %}
+{% block content %}{% include "portal/_docs_body.html" %}{% endblock %}
 
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    // --- Scrollspy for docs navigation ---
-    const sections = document.querySelectorAll('main.docs-content section[id]');
-    const navLinks = document.querySelectorAll('.docs-sidebar nav a');
+    var links = document.querySelectorAll('.docs-nav a');
+    var sections = document.querySelectorAll('.docs-content section[id]');
 
-    const observer = new IntersectionObserver(entries => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                navLinks.forEach(link => {
-                    link.classList.remove('active');
-                    if (link.getAttribute('href').substring(1) === entry.target.id) {
-                        link.classList.add('active');
-                    }
+    if ('IntersectionObserver' in window) {
+        var observer = new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+                if (!entry.isIntersecting) return;
+                links.forEach(function (link) {
+                    link.classList.toggle(
+                        'active',
+                        link.getAttribute('href') === '#' + entry.target.id
+                    );
                 });
-            </div>
-        });
-    }, { rootMargin: "-50% 0px -50% 0px" });
+            });
+        }, { rootMargin: '-45% 0px -45% 0px' });
+        sections.forEach(function (section) { observer.observe(section); });
+    }
 
-    sections.forEach(section => {
-        observer.observe(section);
-    });
-
-    // --- Copy button for code blocks ---
-    const copyButtons = document.querySelectorAll('.copy-button');
-    copyButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            const targetSelector = button.dataset.copyTarget;
-            const targetElement = document.querySelector(targetSelector);
-            if (targetElement) {
-                navigator.clipboard.writeText(targetElement.textContent.trim()).then(() => {
-                    const copyText = button.querySelector('.copy-text');
-                    const copyIcon = button.querySelector('.copy-icon');
-                    const checkIcon = button.querySelector('.check-icon');
-
-                    copyText.textContent = 'Copied!';
-                    copyIcon.classList.add('hidden');
-                    checkIcon.classList.remove('hidden');
-
-                    setTimeout(() => {
-                        copyText.textContent = 'Copy';
-                        copyIcon.classList.remove('hidden');
-                        checkIcon.classList.add('hidden');
-                    }, 2000);
-                });
-            }
+    document.querySelectorAll('.copy-button').forEach(function (button) {
+        button.addEventListener('click', function () {
+            var target = document.querySelector(button.dataset.copyTarget);
+            if (!target || !navigator.clipboard) return;
+            navigator.clipboard.writeText(target.textContent.trim()).then(function () {
+                var label = button.querySelector('.copy-text');
+                var original = label.textContent;
+                label.textContent = 'Copied';
+                setTimeout(function () { label.textContent = original; }, 1800);
+            });
         });
     });
 });

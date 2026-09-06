@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 from apps.core.models import UUIDModel, TimeStampedModel
 
@@ -15,12 +16,43 @@ class SuspiciousTransaction(UUIDModel, TimeStampedModel):
 
 
 class RegulatoryReport(UUIDModel, TimeStampedModel):
-    report_type = models.CharField(max_length=80)
+    class Status(models.TextChoices):
+        GENERATED = "generated", "Generated"
+        REVIEWED = "reviewed", "Reviewed"
+        SUBMITTED = "submitted", "Submitted"
+        ARCHIVED = "archived", "Archived"
+
+    report_type = models.CharField(
+        max_length=80,
+        help_text="One of the report generators registered in compliance.reports.",
+    )
+    title = models.CharField(max_length=200, blank=True, editable=False)
     period_start = models.DateField()
     period_end = models.DateField()
-    payload = models.JSONField(default=dict)
-    status = models.CharField(max_length=30, default="draft")
+    payload = models.JSONField(
+        default=dict, editable=False,
+        help_text="Frozen snapshot: {columns, rows, summary, generated_at}.",
+    )
+    row_count = models.PositiveIntegerField(default=0, editable=False)
+    status = models.CharField(
+        max_length=30, choices=Status.choices, default=Status.GENERATED
+    )
+    generated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="generated_regulatory_reports",
+        editable=False,
+    )
+    notes = models.TextField(blank=True)
     submitted_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return self.title or f"{self.report_type} · {self.period_start}–{self.period_end}"
 
 
 class DataRetentionRecord(UUIDModel, TimeStampedModel):

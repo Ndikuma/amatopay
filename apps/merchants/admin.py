@@ -12,7 +12,6 @@ from apps.billing.services import resolve_transaction_fee
 from apps.core.admin_base import AmatoModelAdmin
 
 from .models import (
-    BeneficialOwner,
     Merchant,
     MerchantApplication,
     MerchantApplicationReview,
@@ -45,11 +44,12 @@ class MerchantApplicationAdmin(ModelAdmin):
         "updated_at", "reviewed_by", "reviewed_at",
     )
     fieldsets = (
-        ("Application", {"fields": ("reference", "applicant", "status", "legal_name", "trading_name", "legal_form", "industry", "business_description", "payment_use_case")}),
+        ("Application", {"fields": ("reference", "applicant", "status", "legal_name", "trading_name", "legal_form", "industry", "mcc", "business_description", "payment_use_case", "source_of_funds")}),
         ("Registration", {"fields": ("registration_number", "tax_id", "website", "country", "city", "address")}),
         ("Primary contact", {"fields": ("contact_name", "contact_role", "email", "phone")}),
         ("Expected activity", {"fields": ("expected_monthly_volume", "expected_monthly_transactions", "referral_source")}),
-        ("Proposed BurundiPay settlement", {"description": "Applicant-provided mobile alias. Verify it before enabling settlements.", "fields": ("settlement_alias", "settlement_account_name")}),
+        ("Proposed BurundiPay settlement", {"description": "Applicant-provided mobile alias. Verify it before enabling settlements.", "fields": ("settlement_alias", "settlement_account_name", "statement_descriptor")}),
+        ("KYB documents", {"fields": ("registration_document", "tax_document", "license_document", "address_document", "id_document", "bank_document")}),
         ("Review", {"fields": ("review_notes", "reviewed_by", "reviewed_at")}),
         ("Submission evidence", {"classes": ("collapse",), "fields": ("source_ip", "user_agent", "consented_at", "created_at", "updated_at")}),
     )
@@ -103,7 +103,7 @@ class MerchantAdmin(ModelAdmin):
         "default_fee",
         "effective_fee",
     )
-    list_filter = ("status", "country", "risk_rating")
+    list_filter = ("status", "country", "risk_rating", "instant_settlement_enabled")
     search_fields = ("merchant_code", "legal_name", "display_name", "email")
 
     @admin.display(description="KYC status")
@@ -176,7 +176,6 @@ admin.site.register(
     [
         MerchantKYB,
         MerchantDocument,
-        BeneficialOwner,
         MerchantApiKey,
         MerchantWebhookEndpoint,
     ],

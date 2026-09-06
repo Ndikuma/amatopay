@@ -1,0 +1,355 @@
+:root {
+    --navy: #071f2b;
+    --teal: #11a89a;
+    --mint: #5eead4;
+    --ink: #102a35;
+    --muted: #687d85;
+    --cream: #f5f8f6;
+    --line: #e2ece9;
+}
+
+.pricing {
+    max-width: 1160px;
+    margin: 0 auto;
+    padding: 72px 24px 96px;
+}
+
+.pricing-head {
+    max-width: 640px;
+    margin: 0 auto 56px;
+    text-align: center;
+}
+
+.pricing-head .kicker {
+    display: inline-block;
+    margin-bottom: 14px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1.6px;
+    text-transform: uppercase;
+    color: var(--teal);
+}
+
+.pricing-head h1 {
+    margin: 0 0 14px;
+    font-size: clamp(32px, 5vw, 46px);
+    line-height: 1.1;
+    letter-spacing: -1px;
+    color: var(--ink);
+}
+
+.pricing-head p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 17px;
+    line-height: 1.6;
+}
+
+.plan-grid {
+    display: grid;
+    gap: 22px;
+    grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+    align-items: start;
+}
+
+.plan {
+    display: flex;
+    flex-direction: column;
+    padding: 30px 26px;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    transition: border-color .2s, box-shadow .2s, transform .2s;
+}
+
+.plan:hover {
+    border-color: var(--teal);
+    box-shadow: 0 18px 40px -24px rgba(7, 31, 43, .35);
+    transform: translateY(-3px);
+}
+
+.plan.featured {
+    border-color: var(--navy);
+    box-shadow: 0 24px 50px -28px rgba(7, 31, 43, .45);
+}
+
+.plan-tag {
+    align-self: flex-start;
+    margin-bottom: 14px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    background: var(--navy);
+    color: var(--mint);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .6px;
+    text-transform: uppercase;
+}
+
+.plan h2 {
+    margin: 0 0 4px;
+    font-size: 19px;
+    color: var(--ink);
+}
+
+.plan .desc {
+    margin: 0 0 20px;
+    min-height: 42px;
+    color: var(--muted);
+    font-size: 13.5px;
+    line-height: 1.5;
+}
+
+.plan .price {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    margin-bottom: 4px;
+}
+
+.plan .price strong {
+    font-size: 30px;
+    letter-spacing: -.5px;
+    color: var(--ink);
+}
+
+.plan .price span {
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.plan .allowance {
+    margin: 0 0 22px;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.plan .allowance b {
+    color: var(--ink);
+}
+
+.plan ul {
+    margin: 0 0 26px;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 11px;
+}
+
+.plan li {
+    position: relative;
+    padding-left: 26px;
+    color: var(--ink);
+    font-size: 13.5px;
+    line-height: 1.45;
+}
+
+.plan li:before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 999px;
+    background: rgba(17, 168, 154, .14);
+}
+
+.plan li:after {
+    content: "";
+    position: absolute;
+    left: 5px;
+    top: 6px;
+    width: 4px;
+    height: 7px;
+    border: solid var(--teal);
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+.plan .cta {
+    margin-top: auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 18px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    border: 1px solid var(--navy);
+    color: var(--navy);
+    transition: background .2s, color .2s;
+}
+
+.plan .cta:hover {
+    background: var(--navy);
+    color: #fff;
+}
+
+.plan.featured .cta {
+    background: var(--navy);
+    color: #fff;
+}
+
+.plan.featured .cta:hover {
+    background: var(--teal);
+    border-color: var(--teal);
+}
+
+.pricing-note {
+    margin: 44px auto 0;
+    max-width: 620px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 13.5px;
+    line-height: 1.6;
+}
+
+/* Plan request page */
+.plan-request {
+    max-width: 560px;
+    margin: 0 auto;
+    padding: 72px 24px 96px;
+}
+
+.plan-request h1 {
+    margin: 0 0 8px;
+    font-size: clamp(26px, 4vw, 34px);
+    letter-spacing: -.6px;
+    color: var(--ink);
+}
+
+.plan-request > p {
+    margin: 0 0 28px;
+    color: var(--muted);
+}
+
+.plan-summary {
+    padding: 22px 24px;
+    margin-bottom: 26px;
+    background: var(--cream);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+}
+
+.plan-summary h2 {
+    margin: 0 0 4px;
+    font-size: 17px;
+    color: var(--ink);
+}
+
+.plan-summary p {
+    margin: 0 0 12px;
+    color: var(--muted);
+    font-size: 13.5px;
+}
+
+.plan-summary .price {
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -.5px;
+    color: var(--ink);
+}
+
+.plan-form {
+    display: grid;
+    gap: 20px;
+}
+
+.plan-form .field label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+}
+
+.plan-form .field input,
+.plan-form .field textarea {
+    width: 100%;
+    padding: 11px 14px;
+    font: inherit;
+    color: var(--ink);
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+}
+
+.plan-form .field input:focus,
+.plan-form .field textarea:focus {
+    outline: none;
+    border-color: var(--teal);
+    box-shadow: 0 0 0 3px rgba(17, 168, 154, .16);
+}
+
+.plan-form .help {
+    margin: 6px 0 0;
+    font-size: 12.5px;
+    color: var(--muted);
+}
+
+.plan-form .error {
+    margin: 6px 0 0;
+    font-size: 12.5px;
+    color: #c0392b;
+}
+
+.plan-form button {
+    padding: 13px 18px;
+    border: 0;
+    border-radius: 10px;
+    background: var(--navy);
+    color: #fff;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background .2s;
+}
+
+.plan-form button:hover {
+    background: var(--teal);
+}
+
+.form-messages {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 22px;
+}
+
+.form-messages .msg {
+    padding: 11px 14px;
+    border-radius: 10px;
+    font-size: 13.5px;
+    background: rgba(192, 57, 43, .08);
+    color: #a93226;
+}
+
+.plan-back {
+    display: inline-block;
+    margin-bottom: 18px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    text-decoration: none;
+}
+
+.plan-back:hover { color: var(--teal); }
+
+.plan-summary .allowance {
+    margin: 12px 0 0;
+    font-size: 13px;
+    color: var(--ink);
+}
+
+.plan-summary .allowance b { color: var(--teal); }
+
+.plan-form-note {
+    margin: 4px 0 0;
+    font-size: 12.5px;
+    line-height: 1.55;
+    color: var(--muted);
+}
+
+.plan-form-note a { color: var(--teal); font-weight: 600; }

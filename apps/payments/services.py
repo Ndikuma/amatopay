@@ -9,10 +9,10 @@ from apps.billing.services import (
     ensure_checkout_fee_snapshot,
 )
 from apps.checkout.models import PaymentSession
-from apps.gateway.rtp import (
-    call_create_rtp,
-    new_rtp_request_id,
-    persist_rtp_request,
+from apps.gateway.collection import (
+    call_create_collection,
+    new_collection_request_id,
+    persist_collection_request,
 )
 from apps.webhooks.services import emit_event
 
@@ -44,12 +44,12 @@ def initiate_payment(session):
 
 
 @transaction.atomic
-def create_checkout_payment_and_rtp(session, verification):
-    """
-    Checkout payment workflow:
-      1. Lock fee snapshot on session
-      2. Create Payment + immutable fee record
-      3. Submit RTP via shared gateway rail
+def create_checkout_payment(session, verification):
+    """Create the Payment record + immutable fee snapshot for a verified session.
+
+    Does NOT contact the payment gateway. The collection is submitted later
+    by :func:`submit_checkout_payment_collection` (via the ``process_pending_payments``
+    management command), so merchant checkout creation never blocks on the rail.
     """
     session = ensure_checkout_fee_snapshot(session)
     payment, created = Payment.objects.get_or_create(
@@ -71,12 +71,39 @@ def create_checkout_payment_and_rtp(session, verification):
             "status": Payment.Status.ALIAS_VERIFIED,
         },
     )
-    if not created and hasattr(payment, "rtp"):
-        return payment.rtp
+    if created:
+        create_transaction_fee_snapshot(payment)
+        PaymentStatusHistory.objects.create(
+            payment=payment, status=payment.status, source="checkout"
+        )
+    return payment
 
-    create_transaction_fee_snapshot(payment)
-    release_code = f"{secrets.randbelow(1_000_000):06d}"
-    payment.release_code_hash = make_password(release_code)
+
+@transaction.atomic
+def submit_checkout_payment_collection(payment):
+    """Submit the collection for a checkout payment. Idempotent.
+
+    Called out-of-band (management command / retry) so the payer-facing
+    request that created the payment never waits for the gateway.
+    """
+    payment = (
+        Payment.objects.select_for_update()
+        .select_related("session", "merchant")
+        .get(pk=payment.pk)
+    )
+    if hasattr(payment, "collection"):
+        return payment.collection
+    if payment.status not in {
+        Payment.Status.ALIAS_VERIFIED,
+        Payment.Status.CREATED,
+    }:
+        return getattr(payment, "collection", None)
+
+    session = payment.session
+    # Instant-settlement sessions have no delivery gate, so no secure code.
+    protected = session.require_delivery_confirmation
+    release_code = f"{secrets.randbelow(1_000_000):06d}" if protected else None
+    payment.release_code_hash = make_password(release_code) if protected else ""
     payment.release_code_failed_attempts = 0
     payment.release_code_locked_at = None
     payment.release_code_confirmed_at = None
@@ -90,29 +117,32 @@ def create_checkout_payment_and_rtp(session, verification):
         ]
     )
 
-    req_id = new_rtp_request_id()
+    description = (
+        f"{session.description} | AmatoPay release code: {release_code}"
+        if protected
+        else session.description
+    )
+    req_id = new_collection_request_id()
     payload = {
         "requestId": req_id,
         "paymentReference": payment.reference,
-        "payerAlias": verification.alias_value,
-        "payerAliasType": verification.alias_type,
+        "payerAlias": payment.payer_alias,
+        "payerAliasType": payment.payer_alias_type,
         "merchant": {
-            "id": session.merchant.merchant_code,
-            "name": session.merchant.display_name,
+            "id": payment.merchant.merchant_code,
+            "name": payment.merchant.display_name,
         },
         "order": {
             "number": session.order_number,
-            "description": (
-                f"{session.description} | AmatoPay release code: {release_code}"
-            ),
+            "description": description,
         },
-        "amount": str(session.amount),
-        "fee": str(session.fee_amount),
-        "totalAmount": str(session.total_amount),
-        "currency": session.currency,
+        "amount": str(payment.amount),
+        "fee": str(payment.fee_amount),
+        "totalAmount": str(payment.total_amount),
+        "currency": payment.currency,
     }
-    result = call_create_rtp(payload)
-    rtp = persist_rtp_request(
+    result = call_create_collection(payload)
+    collection = persist_collection_request(
         request_id=req_id,
         payload=payload,
         result=result,
@@ -121,23 +151,30 @@ def create_checkout_payment_and_rtp(session, verification):
     )
     provider_ref = result.get("trxRef") or result.get("providerReference", "")
     payment.provider_reference = provider_ref
-    payment.status = Payment.Status.RTP_PENDING
+    payment.status = Payment.Status.COLLECTION_PENDING
     payment.save(update_fields=["provider_reference", "status", "updated_at"])
     PaymentStatusHistory.objects.create(
         payment=payment, status=payment.status, source="rail", payload=result
     )
     session.status = PaymentSession.Status.AWAITING_PAYMENT
     session.save(update_fields=["status", "updated_at"])
-    return rtp
+    return collection
 
 
 @transaction.atomic
-def apply_payment_rtp_status(payment, status, data):
-    """Apply an RTP status update to a checkout payment and its session."""
+def create_checkout_payment_and_collection(session, verification):
+    """Synchronous variant: create the payment and immediately submit the collection."""
+    payment = create_checkout_payment(session, verification)
+    return submit_checkout_payment_collection(payment)
+
+
+@transaction.atomic
+def apply_payment_collection_status(payment, status, data):
+    """Apply an collection status update to a checkout payment and its session."""
     from apps.fiduciary.services import hold_funds
 
     mapping = {
-        "PENDING": Payment.Status.RTP_PENDING,
+        "PENDING": Payment.Status.COLLECTION_PENDING,
         "AWAITING_APPROVAL": Payment.Status.AWAITING_APPROVAL,
         "PROCESSING": Payment.Status.PROCESSING,
         "COMPLETED": Payment.Status.PAID,
@@ -175,10 +212,18 @@ def apply_payment_rtp_status(payment, status, data):
                 "fee_source": payment.fee_source,
                 "total_amount": str(payment.total_amount),
                 "currency": payment.currency,
+                "instant_settlement": not payment.session.require_delivery_confirmation,
             },
             "payment",
             payment.reference,
         )
+        # Instant-settlement sessions have no delivery gate: auto-confirm and
+        # release straight away. Runs after payment.paid so that event still
+        # carries the clean "held" status.
+        if not payment.session.require_delivery_confirmation:
+            from apps.deliveries.services import confirm_delivery_instant
+
+            confirm_delivery_instant(payment)
     elif status in {"REJECTED", "FAILED", "CANCELLED"}:
         payment.session.status = PaymentSession.Status.FAILED
         payment.session.save(update_fields=["status", "updated_at"])

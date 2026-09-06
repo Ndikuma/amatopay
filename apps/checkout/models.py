@@ -45,6 +45,14 @@ class PaymentSession(UUIDModel, TimeStampedModel):
     payer_alias = models.CharField(max_length=160, blank=True)
     payer_display_name = models.CharField(max_length=180, blank=True)
     return_url = models.URLField(blank=True)
+    require_delivery_confirmation = models.BooleanField(
+        default=True,
+        help_text=(
+            "When false, the payment settles to the merchant immediately on "
+            "collection with no delivery-confirmation hold. Only permitted for "
+            "merchants with instant_settlement_enabled."
+        ),
+    )
     expires_at = models.DateTimeField()
     status = models.CharField(
         max_length=30, choices=Status.choices, default=Status.CREATED

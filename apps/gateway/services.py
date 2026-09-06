@@ -9,14 +9,12 @@ from apps.fiduciary.models import FiduciaryEntry
 from apps.settlements.models import Settlement
 from .models import (
     AliasVerification,
+    GatewayCallback,
+    GatewayRequest,
     GatewayTransactionPoll,
-    RTPRequest,
-    RTPCallback,
-    P2PRequest,
-    P2PCallback,
 )
 from . import client
-from .rtp import PaymentGatewayError, redact_release_code
+from .collection import PaymentGatewayError, redact_release_code
 from apps.webhooks.services import emit_event
 
 # Re-export for callers that import from gateway.services
@@ -25,10 +23,10 @@ __all__ = [
     "PaymentGatewayError",
     "verify_merchant_payer_alias",
     "persist_alias_result",
-    "create_checkout_and_rtp",
-    "create_payment_and_rtp",
-    "apply_rtp_status",
-    "recover_rtp_status",
+    "create_checkout_and_collection",
+    "create_payment_and_collection",
+    "apply_collection_status",
+    "recover_collection_status",
     "start_merchant_payout",
     "recover_p2p_status",
     "apply_p2p_status",
@@ -65,7 +63,7 @@ def verify_merchant_payer_alias(*, merchant, payer_alias):
     return verification
 
 
-def create_checkout_and_rtp(*, merchant, payer_alias, session_data):
+def create_checkout_and_collection(*, merchant, payer_alias, session_data):
     """Backward-compatible wrapper — delegates to checkout workflow."""
     from apps.checkout.services import create_checkout_session
 
@@ -76,11 +74,11 @@ def create_checkout_and_rtp(*, merchant, payer_alias, session_data):
     )
 
 
-def create_payment_and_rtp(session, av):
+def create_payment_and_collection(session, av):
     """Backward-compatible wrapper — delegates to payments checkout workflow."""
-    from apps.payments.services import create_checkout_payment_and_rtp
+    from apps.payments.services import create_checkout_payment_and_collection
 
-    return create_checkout_payment_and_rtp(session, av)
+    return create_checkout_payment_and_collection(session, av)
 
 
 @transaction.atomic
@@ -117,85 +115,82 @@ def persist_alias_result(session, alias_type, alias_value, result):
 
 
 @transaction.atomic
-def apply_rtp_status(data):
+def apply_collection_status(data):
     """
-    Apply an RTP status update from callback or polling.
+    Apply an collection status update from callback or polling.
     Dispatches to billing or checkout (payments) workflow handlers.
     """
-    existing = RTPCallback.objects.filter(event_id=data["eventId"]).first()
+    existing = GatewayCallback.objects.filter(event_id=data["eventId"]).first()
     if existing:
         return existing
     trx_ref = data.get("trxRef") or data.get("providerReference")
     if not trx_ref:
-        raise ValueError("RTP status update is missing trxRef")
+        raise ValueError("collection status update is missing trxRef")
 
-    rtp_qs = RTPRequest.objects.select_for_update().select_related(
-        "payment", "extension_order", "extension_order__assignment", "plan_request"
+    collection_qs = (
+        GatewayRequest.objects.select_for_update()
+        .filter(rail=GatewayRequest.Rail.COLLECTION)
+        .select_related("payment", "plan_request")
     )
     payment_ref = data.get("paymentReference", "")
-    rtp = (
-        rtp_qs.filter(payment__reference=payment_ref, provider_reference=trx_ref).first()
-        or rtp_qs.filter(
-            extension_order__reference=payment_ref, provider_reference=trx_ref
-        ).first()
-        or rtp_qs.filter(
+    collection = (
+        collection_qs.filter(payment__reference=payment_ref, provider_reference=trx_ref).first()
+        or collection_qs.filter(
             plan_request__reference=payment_ref, provider_reference=trx_ref
         ).first()
     )
-    if not rtp:
-        raise RTPRequest.DoesNotExist(
-            f"No RTPRequest found for paymentReference={payment_ref} trxRef={trx_ref}"
+    if not collection:
+        raise GatewayRequest.DoesNotExist(
+            f"No collection GatewayRequest found for paymentReference={payment_ref} trxRef={trx_ref}"
         )
 
-    callback = RTPCallback.objects.create(
+    callback = GatewayCallback.objects.create(
         event_id=data["eventId"],
-        rtp=rtp,
+        request=collection,
         status=data["status"],
         reason_code=data.get("reasonCode", ""),
         payload=data,
     )
-    rtp.status = data["status"].lower()
-    rtp.last_callback_at = timezone.now()
-    rtp.save(update_fields=["status", "last_callback_at", "updated_at"])
+    collection.status = data["status"].lower()
+    collection.last_callback_at = timezone.now()
+    collection.save(update_fields=["status", "last_callback_at", "updated_at"])
 
     status = data["status"]
-    if rtp.extension_order_id or rtp.plan_request_id:
-        from apps.billing.services import apply_billing_rtp_status
+    if collection.plan_request_id:
+        from apps.billing.services import apply_billing_collection_status
 
-        apply_billing_rtp_status(rtp, status, data)
+        apply_billing_collection_status(collection, status, data)
     else:
-        from apps.payments.services import apply_payment_rtp_status
+        from apps.payments.services import apply_payment_collection_status
 
-        apply_payment_rtp_status(rtp.payment, status, data)
+        apply_payment_collection_status(collection.payment, status, data)
 
     return callback
 
 
-def recover_rtp_status(rtp):
+def recover_collection_status(collection):
     import logging
 
-    """Poll MobileCash and apply the RTP result idempotently."""
-    result = _poll_transaction(rtp, GatewayTransactionPoll.Rail.RTP, client.get_rtp_status)
+    """Poll MobileCash and apply the collection result idempotently."""
+    result = _poll_transaction(collection, GatewayTransactionPoll.Rail.COLLECTION, client.get_collection_status)
     status = str(result.get("status", "PENDING")).upper()
-    if status == rtp.status.upper():
+    if status == collection.status.upper():
         return None
-    if rtp.extension_order_id:
-        payment_ref = rtp.extension_order.reference
-    elif rtp.plan_request_id:
-        payment_ref = rtp.plan_request.reference
-    elif rtp.payment_id:
-        payment_ref = rtp.payment.reference
+    if collection.plan_request_id:
+        payment_ref = collection.plan_request.reference
+    elif collection.payment_id:
+        payment_ref = collection.payment.reference
     else:
         logging.getLogger(__name__).warning(
-            "Skipping RTP poll for %s: no associated payment or billing object.",
-            rtp.request_id,
+            "Skipping collection poll for %s: no associated payment or billing object.",
+            collection.request_id,
         )
         return None
-    return apply_rtp_status(
+    return apply_collection_status(
         {
-            "eventId": f"poll-{rtp.provider_reference}-{status.lower()}",
+            "eventId": f"poll-{collection.provider_reference}-{status.lower()}",
             "paymentReference": payment_ref,
-            "trxRef": rtp.trx_ref,
+            "trxRef": collection.trx_ref,
             "status": status,
             "reasonCode": result.get("reasonCode", ""),
         }
@@ -212,8 +207,11 @@ def start_merchant_payout(settlement):
         .select_related("merchant", "payment")
         .get(pk=settlement.pk)
     )
-    if P2PRequest.objects.filter(settlement=settlement).exists():
-        return P2PRequest.objects.get(settlement=settlement)
+    existing_payout = GatewayRequest.objects.filter(
+        rail=GatewayRequest.Rail.P2P, settlement=settlement
+    ).first()
+    if existing_payout:
+        return existing_payout
     if settlement.status not in {Settlement.Status.PENDING, Settlement.Status.FAILED}:
         raise ValueError("Settlement is not eligible for payout")
     if settlement.payment.fund_hold.status != "release_pending":
@@ -257,7 +255,8 @@ def start_merchant_payout(settlement):
     provider_ref = result.get("trxRef") or result.get("providerReference", "")
     if not provider_ref:
         raise PaymentGatewayError("Payout could not be initiated. Please try again.")
-    p2p = P2PRequest.objects.create(
+    p2p = GatewayRequest.objects.create(
+        rail=GatewayRequest.Rail.P2P,
         request_id=req_id,
         settlement=settlement,
         provider_reference=provider_ref,
@@ -368,7 +367,7 @@ def _poll_transaction(request_record, rail, getter):
 def apply_p2p_status(data):
     from apps.payments.models import Payment, PaymentStatusHistory
 
-    existing = P2PCallback.objects.filter(event_id=data["eventId"]).first()
+    existing = GatewayCallback.objects.filter(event_id=data["eventId"]).first()
     if existing:
         return existing
     trx_ref = data.get("trxRef") or data.get("providerReference")
@@ -379,12 +378,14 @@ def apply_p2p_status(data):
         .select_related("payment")
         .get(reference=data["settlementReference"])
     )
-    p2p = P2PRequest.objects.select_for_update().get(
-        settlement=settlement, provider_reference=trx_ref
+    p2p = GatewayRequest.objects.select_for_update().get(
+        rail=GatewayRequest.Rail.P2P,
+        settlement=settlement,
+        provider_reference=trx_ref,
     )
-    callback = P2PCallback.objects.create(
+    callback = GatewayCallback.objects.create(
         event_id=data["eventId"],
-        p2p=p2p,
+        request=p2p,
         status=data["status"],
         reason_code=data.get("reasonCode", ""),
         payload=data,
@@ -448,4 +449,15 @@ def apply_p2p_status(data):
         settlement.status = Settlement.Status.FAILED
         settlement.failure_code = data.get("reasonCode", "")
         settlement.save(update_fields=["status", "failure_code", "updated_at"])
+        emit_event(
+            settlement.merchant,
+            "settlement.failed",
+            {
+                "payment_reference": settlement.payment.reference,
+                "settlement_reference": settlement.reference,
+                "reason_code": settlement.failure_code,
+            },
+            "settlement",
+            settlement.reference,
+        )
     return callback

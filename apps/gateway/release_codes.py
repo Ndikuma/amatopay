@@ -1,4 +1,4 @@
-"""Authenticated encryption for payer delivery codes on RTP collections."""
+"""Authenticated encryption for payer delivery codes on collections."""
 
 import base64
 import hashlib
@@ -33,11 +33,11 @@ def encrypt_release_code(code):
 
 def decrypt_release_code(ciphertext):
     if not ciphertext:
-        raise ValueError("This RTP collection has no available delivery code.")
+        raise ValueError("This collection has no available delivery code.")
     try:
         return _cipher().decrypt(ciphertext.encode("ascii")).decode("ascii")
     except InvalidToken as exc:
-        raise ValueError("The stored RTP delivery code cannot be decrypted.") from exc
+        raise ValueError("The stored collection delivery code cannot be decrypted.") from exc
 
 
 if __name__ == "__main__":

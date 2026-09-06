@@ -5,7 +5,7 @@ from rest_framework.viewsets import ReadOnlyModelViewSet
 from drf_spectacular.utils import extend_schema, inline_serializer
 
 from apps.developers.authentication import MerchantApiKeyAuthentication
-from apps.developers.permissions import HasMerchantApiKey
+from apps.developers.permissions import IsActiveMerchant
 from apps.deliveries.serializers import SecureDeliveryConfirmationSerializer
 from apps.deliveries.services import confirm_delivery_with_code
 from .models import Payment
@@ -16,7 +16,7 @@ class PaymentViewSet(ReadOnlyModelViewSet):
     queryset = Payment.objects.none()
     serializer_class = PaymentSerializer
     authentication_classes = [MerchantApiKeyAuthentication]
-    permission_classes = [HasMerchantApiKey]
+    permission_classes = [IsActiveMerchant]
     lookup_field = "reference"
     filterset_fields = ["status", "currency"]
     search_fields = ["reference", "session__order_number"]

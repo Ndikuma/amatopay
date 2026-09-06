@@ -1,0 +1,149 @@
+<div class="docs-page">
+    <div class="docs-layout">
+        <aside class="docs-nav" aria-label="Documentation sections">
+            <p class="docs-nav-group">Get started</p>
+            <a href="#overview" class="active">Overview</a>
+            <a href="#quickstart">Quickstart</a>
+            <a href="#authentication">Authentication</a>
+            <a href="#ping">Ping &amp; readiness</a>
+            <p class="docs-nav-group">Payments</p>
+            <a href="#flow">Payment lifecycle</a>
+            <a href="#webhooks">Webhooks</a>
+            <p class="docs-nav-group">Trust</p>
+            <a href="#security">Security model</a>
+            <a href="#funds">Protected funds</a>
+        </aside>
+
+        <div class="docs-content">
+            <section class="docs-hero" id="overview">
+                <span class="section-label">API version 1</span>
+                <h1>Build payments people trust.</h1>
+                <p>Accept BIF payments with hosted checkout, real-time status updates,
+                   protected funds and dependable merchant settlement.</p>
+                <div class="docs-hero-actions">
+                    <a href="#quickstart" class="btn-primary">Start integrating</a>
+                    <a href="mailto:{{ developers_email }}">Talk to a developer</a>
+                </div>
+            </section>
+
+            <section id="quickstart">
+                <span class="section-label">Quickstart</span>
+                <h2>Create your first checkout session</h2>
+                <p>Make a POST request from your server to the <code>checkout/sessions</code>
+                   endpoint with an API key from your merchant workspace. Include a unique
+                   <code>Idempotency-Key</code> on every write request to prevent duplicates.</p>
+
+                <div class="code-block">
+                    <div class="code-block-head">
+                        <span>POST /api/v1/checkout/sessions/</span>
+                        <button type="button" class="copy-button" data-copy-target="#curl-request">
+                            <span class="copy-text">Copy</span>
+                        </button>
+                    </div>
+<pre id="curl-request"><code><b>curl</b> -X POST {{ api_base_url }}/api/v1/checkout/sessions/ \
+  -H <i>"Authorization: Bearer sk_••••"</i> \
+  -H <i>"Idempotency-Key: order-1001"</i> \
+  -H <i>"Content-Type: application/json"</i> \
+  -d '{
+    "order_number": "ORDER-1001",
+    "description": "Online purchase",
+    "amount": "50000.00",
+    "currency": "BIF",
+    "payer_alias": "+25779000000",
+    "return_url": "https://merchant.bi/payment/result"
+  }'</code></pre>
+                </div>
+
+                <p class="docs-note">AmatoPay responds with a session object containing a
+                   <code>session_id</code> and a <code>checkout_url</code>. Redirect your
+                   customer there to complete the payment.</p>
+
+                <p class="docs-note">Selling a service that is delivered the moment payment
+                   clears (transport tickets, airtime, event tickets)? If your account has the
+                   <strong>instant settlement</strong> capability, send
+                   <code>"require_delivery_confirmation": false</code> — the payment skips the
+                   secure-code hold and pays out to you immediately. Ask support to enable it.</p>
+
+                <div class="code-block">
+                    <div class="code-block-head"><span>Response</span></div>
+<pre><code>{
+  "session_id": "8f1c…",
+  "checkout_url": "https://…/pay/8f1c…/",
+  "status": "alias_verified",
+  "amount": "50000.00",
+  "currency": "BIF",
+  "order_number": "ORDER-1001"
+}</code></pre>
+                </div>
+            </section>
+
+            <div class="docs-cards">
+                <section id="authentication">
+                    <span class="doc-icon">⌁</span>
+                    <h3>Authentication</h3>
+                    <p>Authenticate server-to-server calls with a secret API key from your
+                       <a href="{% url 'portal:developers' %}">developer settings</a>. Send it
+                       as <code>Authorization: Bearer sk_…</code> or <code>X-Api-Key: sk_…</code>.
+                       Never expose secret keys in browser or mobile code.</p>
+                </section>
+                <section id="ping">
+                    <span class="doc-icon">◇</span>
+                    <h3>Ping &amp; readiness</h3>
+                    <p>Call <code>GET /api/v1/ping/</code> to confirm your key works and see
+                       whether your account is verified and cleared to operate. Returns a
+                       welcome message, your merchant details, <code>can_operate</code>, and
+                       any pending verification steps. Works even while in review.</p>
+                </section>
+            </div>
+
+            <section id="webhooks">
+                <span class="section-label">Webhooks</span>
+                <h2>Signed webhooks are your source of truth</h2>
+                <p>Configure endpoints in the dashboard and subscribe to the events you need
+                   for payment, delivery, settlement and refund updates.</p>
+                <p class="docs-events"><code>payment.processing</code> <code>payment.awaiting_approval</code>
+                   <code>payment.paid</code> <code>payment.failed</code> <code>delivery.confirmed</code>
+                   <code>payment.disputed</code> <code>settlement.completed</code>
+                   <code>settlement.failed</code> <code>payment.refunded</code></p>
+                <p>Each request carries <code>AmatoPay-Signature: t=&lt;timestamp&gt;,v1=&lt;hex&gt;</code>,
+                   where <code>v1</code> is
+                   <code>HMAC-SHA256(endpoint_secret, "&lt;timestamp&gt;." + raw_body)</code>.
+                   Reject requests with a bad signature or a stale timestamp. Failed
+                   deliveries retry with exponential backoff for up to 8 attempts.</p>
+            </section>
+
+            <section id="flow">
+                <span class="section-label">Payment lifecycle</span>
+                <h2>One traceable flow from checkout to payout</h2>
+                <ol class="api-flow">
+                    <li><b>1</b><span><strong>Verify the payer</strong><small>The payer's MOBILE alias is checked before a payment is created.</small></span></li>
+                    <li><b>2</b><span><strong>Create the session</strong><small>Your server sends order, payer and amount details. The response is immediate — no gateway wait.</small></span></li>
+                    <li><b>3</b><span><strong>Customer pays</strong><small>Redirect to <code>checkout_url</code>; the payer approves the payment request and gets a six-digit secure code.</small></span></li>
+                    <li><b>4</b><span><strong>Funds are protected</strong><small>Paid funds are held in a fiduciary account while the order is fulfilled.</small></span></li>
+                    <li><b>5</b><span><strong>Settlement completes</strong><small>Once the payer confirms delivery, net funds are paid to your verified settlement number.</small></span></li>
+                </ol>
+            </section>
+
+            <section class="security-callout" id="security">
+                <span class="doc-icon">◇</span>
+                <div>
+                    <span class="section-label">Security</span>
+                    <h2>Design for verification, not assumptions.</h2>
+                    <p>Never treat the browser <code>return_url</code> as proof of payment —
+                       the customer may close the browser early. Always confirm status with
+                       the API or a signed webhook before fulfilling an order.</p>
+                </div>
+            </section>
+
+            <section id="funds">
+                <span class="section-label">Protected funds</span>
+                <h2>Delivery-aware settlement</h2>
+                <p>AmatoPay tracks fiduciary holds, delivery confirmation, operational
+                   reviews, refunds and final settlement as separate auditable states.
+                   Domestic transactions use a four-business-day protection window;
+                   international transactions use fourteen calendar days, subject to
+                   compliance review.</p>
+            </section>
+        </div>
+    </div>
+</div>

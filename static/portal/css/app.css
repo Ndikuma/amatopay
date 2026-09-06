@@ -561,7 +561,8 @@ code {
 .status-completed,
 .status-settled,
 .status-funds_held,
-.status-delivery_pending {
+.status-delivery_pending,
+.status-delivered {
     color: var(--success);
     background: #eaf8f2;
 }
@@ -569,7 +570,8 @@ code {
 .status-pending,
 .status-processing,
 .status-release_pending,
-.status-settlement_processing {
+.status-settlement_processing,
+.status-retrying {
     color: var(--warning);
     background: #fff6e8;
 }
@@ -1714,7 +1716,18 @@ code {
 .portal-messages{display:grid;gap:8px;margin:0 0 18px}.portal-message{border:1px solid var(--line);border-radius:10px;background:#fff;padding:12px 14px;font-weight:650}.portal-message-success{border-color:#a7e6d2;background:#effcf9;color:#087f5b}.portal-message-error{border-color:#fecaca;background:#fef2f2;color:#b42318}
 .webhook-create-form{display:grid;grid-template-columns:1.4fr 1fr;gap:14px;margin:0 0 20px;padding:18px;border:1px solid var(--line);border-radius:12px;background:#f8fbfa}.webhook-create-form label>span,.webhook-create-form legend{display:block;margin-bottom:6px;color:var(--muted);font-size:11px;font-weight:750;text-transform:uppercase;letter-spacing:.06em}.webhook-create-form input[type=url],.webhook-create-form input[name=description]{width:100%;padding:11px 12px;border:1px solid #cbdadd;border-radius:9px;background:#fff;color:var(--ink)}.webhook-create-form fieldset{display:flex;grid-column:1/-1;gap:14px;margin:0;padding:0;border:0}.webhook-create-form fieldset label{font-size:12px}.webhook-create-form>button{width:max-content}.webhook-create-form>p{align-self:center;margin:0;color:var(--muted);font-size:11px}@media(max-width:760px){.webhook-create-form{grid-template-columns:1fr}.webhook-create-form fieldset{flex-direction:column}.webhook-create-form>button{width:100%}}
 
-+.payment-detail-header {
+/* Webhook delivery / merchant-response inspector */
+.data-table td .wh-evt{display:block;margin-top:3px;font-size:10.5px;color:var(--muted)}
+.data-table td .muted{color:var(--muted)}
+.wh-response{max-width:340px}
+.wh-response>summary{cursor:pointer;color:var(--teal-600);font-weight:650;font-size:12px;list-style:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wh-response>summary::-webkit-details-marker{display:none}
+.wh-response>summary::before{content:"▸ ";color:var(--muted)}
+.wh-response[open]>summary::before{content:"▾ "}
+.wh-body{margin:8px 0 0;padding:10px 12px;max-height:220px;overflow:auto;border-radius:8px;background:#0b2934;color:#cfe6e4;font:11.5px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap;word-break:break-word}
+.wh-body.wh-headers{background:#0e3540;color:#9fbcc1;font-size:11px}
+
+.payment-detail-header {
     align-items: center;
 }
 
@@ -1940,6 +1953,32 @@ code {
     margin-bottom: 0;
 }
 
+.secure-notice + .secure-notice {
+    margin-top: 12px;
+}
+
+.secure-notice .copy-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.secure-notice .copy-row input {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 10px;
+    border: 1px solid #bfe8dc;
+    border-radius: 8px;
+    background: #fff;
+    color: #075f50;
+    font-size: 12px;
+}
+
+.secure-notice .copy-row .button {
+    flex: none;
+    white-space: nowrap;
+}
+
 .secure-notice p,
 .confirmation-complete p,
 .confirmation-locked p,
@@ -2085,4 +2124,188 @@ code {
         margin-right: 16px;
         margin-left: 16px;
     }
+}
+
+/* ---------------------------------------------------------------------------
+   Billing — plan usage meter & plan selection
+   --------------------------------------------------------------------------- */
+
+.usage-meter {
+    padding: 18px 20px;
+    border-bottom: 1px solid #edf1f2;
+}
+
+.usage-meter-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.usage-meter-head span {
+    color: var(--muted);
+    font-size: 9px;
+    font-weight: 650;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+}
+
+.usage-meter-head strong {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--ink);
+}
+
+.usage-meter-track {
+    height: 8px;
+    border-radius: 999px;
+    background: #e6edee;
+    overflow: hidden;
+}
+
+.usage-meter-fill {
+    height: 100%;
+    min-width: 4px;
+    border-radius: 999px;
+    background: var(--teal-500);
+    transition: width .4s ease;
+}
+
+.usage-meter-fill.is-warn { background: var(--warning); }
+.usage-meter-fill.is-high { background: var(--danger); }
+
+.usage-meter-note {
+    margin: 10px 0 0;
+    color: var(--muted);
+    font-size: 10px;
+    line-height: 1.5;
+}
+
+.plan-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 16px;
+    padding: 20px;
+}
+
+.plan-option {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 18px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface);
+}
+
+.plan-option.is-current {
+    border-color: var(--teal-500);
+    box-shadow: 0 0 0 1px var(--teal-500) inset;
+}
+
+.plan-option.is-featured {
+    border-color: var(--navy-800);
+}
+
+.plan-option-name {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ink);
+}
+
+.plan-option-tag {
+    font-size: 8px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    padding: 3px 7px;
+    border-radius: 999px;
+    background: var(--teal-100);
+    color: var(--teal-600);
+}
+
+.plan-option-price {
+    font-size: 22px;
+    font-weight: 750;
+    color: var(--ink);
+    line-height: 1.1;
+}
+
+.plan-option-price small {
+    display: block;
+    margin-top: 2px;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--muted);
+}
+
+.plan-option-desc {
+    margin: 0;
+    font-size: 10.5px;
+    line-height: 1.5;
+    color: var(--muted);
+    flex: 1;
+}
+
+.plan-option ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 5px;
+}
+
+.plan-option li {
+    position: relative;
+    padding-left: 16px;
+    font-size: 10px;
+    color: var(--ink);
+}
+
+.plan-option li::before {
+    content: "✓";
+    position: absolute;
+    left: 0;
+    color: var(--teal-600);
+    font-weight: 700;
+}
+
+.plan-form-inline {
+    display: grid;
+    gap: 14px;
+    padding: 0 20px 20px;
+    max-width: 460px;
+}
+
+.plan-form-inline label {
+    display: grid;
+    gap: 5px;
+    font-size: 10px;
+    font-weight: 650;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .05em;
+}
+
+.plan-form-inline input,
+.plan-form-inline select,
+.plan-form-inline textarea {
+    font: inherit;
+    font-size: 12px;
+    padding: 9px 11px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface);
+    color: var(--ink);
+}
+
+.plan-form-inline input:focus,
+.plan-form-inline select:focus,
+.plan-form-inline textarea:focus {
+    outline: 2px solid var(--teal-500);
+    outline-offset: 1px;
+    border-color: var(--teal-500);
 }

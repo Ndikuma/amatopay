@@ -1,7 +1,7 @@
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 
 from apps.developers.authentication import MerchantApiKeyAuthentication
-from apps.developers.permissions import HasMerchantApiKey, IsOperationsUser
+from apps.developers.permissions import IsActiveMerchant, IsOperationsUser
 
 from .models import FiduciaryAccount, FiduciaryEntry, FundHold
 from .serializers import (
@@ -21,7 +21,7 @@ class FundHoldViewSet(ReadOnlyModelViewSet):
     queryset = FundHold.objects.none()
     serializer_class = FundHoldSerializer
     authentication_classes = [MerchantApiKeyAuthentication]
-    permission_classes = [HasMerchantApiKey]
+    permission_classes = [IsActiveMerchant]
     filterset_fields = ["status", "payment"]
 
     def get_queryset(self):
@@ -36,7 +36,7 @@ class FiduciaryEntryViewSet(ReadOnlyModelViewSet):
     queryset = FiduciaryEntry.objects.none()
     serializer_class = FiduciaryEntrySerializer
     authentication_classes = [MerchantApiKeyAuthentication]
-    permission_classes = [HasMerchantApiKey]
+    permission_classes = [IsActiveMerchant]
 
     def get_queryset(self):
         return FiduciaryEntry.objects.filter(

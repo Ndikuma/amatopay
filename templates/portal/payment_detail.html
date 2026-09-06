@@ -56,21 +56,32 @@
             {% endif %}
         </article>
         <article class="panel delivery-confirm-card">
-            <div class="panel-head"><div><h2>Verify delivery</h2><p>Use payer-controlled confirmation before protected funds move.</p></div></div>
-            {% if delivery_decision_url %}<div class="secure-notice"><strong>Customer delivery link</strong><p>Send this AmatoPay link first. Customer can confirm with code, request alternative-proof review, or report problem within the four-business-day protection window.</p><input type="text" value="{{ delivery_decision_url }}" readonly aria-label="Customer delivery decision URL"></div>{% endif %}
+            <div class="panel-head"><div><h2>Verify delivery</h2><p>The payer releases the protected funds — by code, or through an AmatoPay review.</p></div></div>
+            {% if delivery_decision_url %}
+            <div class="secure-notice">
+                <strong>Send the customer their delivery link</strong>
+                <p>On it the customer can confirm receipt with their six-digit code, or report a problem. Sharing this is the recommended first step.</p>
+                <div class="copy-row">
+                    <input type="text" value="{{ delivery_decision_url }}" readonly aria-label="Customer delivery decision URL">
+                    <button type="button" class="button" data-copy="{{ delivery_decision_url }}">Copy link</button>
+                </div>
+            </div>
+            {% endif %}
             {% if can_confirm %}
-            <div class="secure-notice"><strong>Customer-authorized release</strong><p>Use code only after customer gives it to you. If customer has no code, send delivery link; alias/document proof opens AmatoPay review and never releases funds automatically.</p></div>
+            <div class="secure-notice">
+                <strong>Or confirm with the customer's code</strong>
+                <p>Only after the customer gives you their code in person. Never ask for a PIN, password or OTP. Five wrong attempts lock verification.</p>
+            </div>
             <form method="post" action="{% url 'portal:payment-confirm-delivery' payment.reference %}" class="delivery-code-form">
                 {% csrf_token %}
                 <label><span>Payment reference</span>{{ form.payment_reference }}{% for error in form.payment_reference.errors %}<em>{{ error }}</em>{% endfor %}</label>
                 <label><span>Secure delivery code</span>{{ form.secure_code }}{% for error in form.secure_code.errors %}<em>{{ error }}</em>{% endfor %}</label>
                 <button class="button button-primary" type="submit">Confirm with customer code</button>
-                <small>Five incorrect attempts lock secure-code verification. Do not ask for PIN, password, or OTP.</small>
             </form>
             {% elif payment.release_code_confirmed_at %}
             <div class="confirmation-complete"><span>✓</span><strong>Delivery confirmed</strong><p>Confirmed {{ payment.release_code_confirmed_at|date:'d M Y, H:i' }}. Settlement processing has started.</p></div>
             {% elif payment.release_code_locked_at %}
-            <div class="confirmation-locked"><strong>Verification locked</strong><p>Contact AmatoPay Operations for secure review.</p></div>
+            <div class="confirmation-locked"><strong>Verification locked</strong><p>Contact <a href="mailto:{{ support_email }}">{{ company_name }} support</a> for secure review.</p></div>
             {% else %}
             <div class="confirmation-waiting"><strong>Not ready for confirmation</strong><p>The payment must be completed and funds held before the delivery code can be verified.</p></div>
             {% endif %}

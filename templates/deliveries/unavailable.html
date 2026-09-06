@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Delivery decision unavailable · AmatoPay{% endblock %}
+
+{% block extra_css %}<link rel="stylesheet" href="{% static 'portal/css/delivery.css' %}">{% endblock %}
+
+{% block public_content %}
+<div class="dp">
+    <span class="dp-badge">Protected by AmatoPay</span>
+
+    <div class="dp-card dp-outcome neutral">
+        <div class="mark" aria-hidden="true">i</div>
+        <h1>Delivery decision unavailable</h1>
+        <p>{{ reason }}</p>
+
+        <div class="dp-order" style="margin-top:22px">
+            <div><span>Payment reference</span><b>{{ payment.reference }}</b></div>
+            <div><span>Merchant</span><b>{{ payment.merchant.display_name }}</b></div>
+            <div><span>Current status</span><b>{{ payment.get_status_display }}</b></div>
+        </div>
+
+        <p class="dp-foot">
+            Nothing more is needed from you here. If you think this is a mistake, contact
+            <a href="mailto:{{ support_email }}">AmatoPay support</a> with the reference above.
+        </p>
+    </div>
+</div>
+{% endblock %}

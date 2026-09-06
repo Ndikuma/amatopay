@@ -13,7 +13,7 @@ from apps.billing.services import (
     create_transaction_fee_snapshot,
     resolve_transaction_fee,
 )
-from apps.gateway.models import P2PRequest
+from apps.gateway.models import GatewayRequest
 from apps.gateway.services import apply_p2p_status
 from apps.checkout.models import PaymentSession
 from apps.fiduciary.models import FiduciaryAccount, FiduciaryEntry, FundHold
@@ -215,7 +215,8 @@ class FeeWorkflowTests(TestCase):
         self.assertEqual(settlement.merchant_fee, snapshot.fee_amount)
         self.assertEqual(settlement.net_amount, snapshot.net_amount)
 
-        p2p = P2PRequest.objects.create(
+        p2p = GatewayRequest.objects.create(
+            rail=GatewayRequest.Rail.P2P,
             request_id="P2P-FEE-SNAPSHOT",
             settlement=settlement,
             provider_reference="P2P-FEE-PROVIDER",
@@ -239,15 +240,15 @@ class FeeWorkflowTests(TestCase):
 
     # ── API ──────────────────────────────────────────────────────────────────
 
-    @patch("apps.gateway.services.client.create_rtp")
+    @patch("apps.gateway.services.client.create_collection")
     @patch("apps.gateway.services.client.verify_alias")
-    def test_api_cannot_manipulate_server_fee_fields(self, verify_alias, create_rtp):
+    def test_api_cannot_manipulate_server_fee_fields(self, verify_alias, create_collection):
         verify_alias.return_value = {
             "found": True, "status": "ACTIVE",
             "customer": {"name": "Fee Payer", "reference": "payer-1"},
             "account": {"type": "MOBILE", "currency": "BIF"},
         }
-        create_rtp.return_value = {"providerReference": "RTP-FEE", "status": "PENDING"}
+        create_collection.return_value = {"providerReference": "RTP-FEE", "status": "PENDING"}
         _, raw_key = MerchantApiKey.issue(self.merchant, "Fee API")
         client = APIClient()
         client.credentials(HTTP_X_API_KEY=raw_key)

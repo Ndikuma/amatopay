@@ -58,13 +58,17 @@ document.querySelectorAll('[data-copy]').forEach((button) => {
     });
 });
 
-document.querySelector('[data-copy-secret]')?.addEventListener('click', async () => {
-    const value = document.querySelector('[data-secret-value]')?.textContent.trim();
-    if (!value) return;
-    try {
-        await navigator.clipboard.writeText(value);
-        showToast('Secret API key copied');
-    } catch (_) {
-        showToast('Could not copy the key');
-    }
+document.querySelectorAll('[data-copy-secret]').forEach((button) => {
+    button.addEventListener('click', async () => {
+        const scope = button.closest('.secret-reveal') || document;
+        const value = scope.querySelector('[data-secret-value]')?.textContent.trim();
+        if (!value) return;
+        try {
+            await navigator.clipboard.writeText(value);
+            button.textContent = 'Copied';
+            showToast('Secret copied to clipboard');
+        } catch (_) {
+            showToast('Could not copy — select and copy manually');
+        }
+    });
 });

@@ -7,7 +7,6 @@ from django.db import transaction, models
 from django.utils import timezone
 from django.contrib.auth.hashers import make_password
 
-from apps.gateway.models import RTPRequest
 from apps.payments.models import TransactionFee
 from .models import (
     MerchantPlanAssignment,
@@ -168,12 +167,12 @@ def ensure_checkout_fee_snapshot(session):
 @transaction.atomic
 def initiate_plan_request_payment(plan_request):
     """
-    Billing workflow: submit RTP to collect payment for a plan subscription request.
+    Billing workflow: submit a collection to collect payment for a plan subscription request.
     """
-    from apps.gateway.rtp import call_create_rtp, new_rtp_request_id, persist_rtp_request
+    from apps.gateway.collection import call_create_collection, new_collection_request_id, persist_collection_request
 
     merchant = plan_request.merchant
-    req_id = new_rtp_request_id(prefix="AMP-PLR")
+    req_id = new_collection_request_id(prefix="AMP-PLR")
     payload = {
         "requestId": req_id,
         "paymentReference": plan_request.reference,
@@ -189,8 +188,8 @@ def initiate_plan_request_payment(plan_request):
         "totalAmount": str(plan_request.amount),
         "currency": plan_request.currency,
     }
-    result = call_create_rtp(payload)
-    persist_rtp_request(
+    result = call_create_collection(payload)
+    persist_collection_request(
         request_id=req_id,
         payload=payload,
         result=result,
@@ -204,10 +203,10 @@ def initiate_plan_request_payment(plan_request):
 
 
 @transaction.atomic
-def apply_billing_rtp_status(rtp, status, data):
-    """Dispatch an RTP status update to the correct billing workflow handler."""
-    if rtp.plan_request_id:
-        apply_plan_request_rtp_status(rtp.plan_request, status, data)
+def apply_billing_collection_status(collection, status, data):
+    """Dispatch an collection status update to the correct billing workflow handler."""
+    if collection.plan_request_id:
+        apply_plan_request_collection_status(collection.plan_request, status, data)
 
 
 @transaction.atomic

@@ -4,7 +4,7 @@ AmatoPay is a merchant-first e-commerce payment gateway operated by Amato Tech. 
 
 ## Public merchant contract
 
-A merchant creates a Checkout Session with the payer's MOBILE alias. AmatoPay verifies the alias, captures the resolved customer name and starts RTP internally. The optional alias-verification endpoint remains available for a name preview, but is not required for session creation.
+A merchant creates a Checkout Session with the payer's MOBILE alias. AmatoPay verifies the alias, captures the resolved customer name and starts the collection internally. The optional alias-verification endpoint remains available for a name preview, but is not required for session creation.
 
 ### Checkout session
 
@@ -51,10 +51,10 @@ AmatoPay shows a `whsec_...` signing secret once. Each webhook contains an `Amat
 1. Merchant creates checkout.
 2. Payer opens hosted AmatoPay checkout.
 3. AmatoPay verifies the payer alias through the internal rail.
-4. AmatoPay generates a six-digit secure release code. It stores a one-way password hash on the payment for verification and an authenticated-encrypted copy on the RTP collection for future direct delivery to the payer. The readable code is not placed in API responses, audit payloads, logs, or merchant views.
-5. AmatoPay sends the RTP request whose creditor is the dedicated AmatoPay fiduciary/collection alias.
+4. AmatoPay generates a six-digit secure release code. It stores a one-way password hash on the payment for verification and an authenticated-encrypted copy on the collection for future direct delivery to the payer. The readable code is not placed in API responses, audit payloads, logs, or merchant views.
+5. AmatoPay sends the collection request whose creditor is the dedicated AmatoPay fiduciary/collection alias.
 6. CECF handles payer authentication/approval and account debit.
-7. AmatoPay polls the MobileCash transaction reference until the RTP reaches a terminal state.
+7. AmatoPay polls the MobileCash transaction reference until the collection reaches a terminal state.
 8. AmatoPay updates Payment, records fiduciary holding, and emits merchant webhook `payment.paid`.
 9. Browser returns to merchant `return_url`.
 10. After delivering the product or service, the merchant sends the public delivery link to the payer or submits the payer-provided six-digit code to `POST /api/v1/payments/{reference}/confirm-delivery/`.
@@ -80,10 +80,10 @@ the JSON body. No delivery evidence, tracking number, or merchant reference is
 required by this endpoint.
 
 The merchant must never receive this code from an AmatoPay API response. Only
-the payer sees it in the institution's RTP description and may provide it after
+the payer sees it in the institution's payment-request description and may provide it after
 the merchant completes delivery or service.
 
-The RTP encrypted copy is temporary and is erased after successful delivery
+The collection's encrypted copy is temporary and is erased after successful delivery
 confirmation. Its encryption key is configured separately from the database
 through `RELEASE_CODE_ENCRYPTION_KEYS`, allowing AmatoPay to add a direct payer
 delivery channel without storing the code as plaintext.
@@ -91,7 +91,7 @@ delivery channel without storing the code as plaintext.
 
 ## Private CECF integration
 
-CECF exposes alias verification, RTP, P2P and transaction-reference status. It
+CECF exposes alias verification, collection, payout and transaction-reference status. It
 does not call AmatoPay. AmatoPay polls status and then sends its own normalized,
 signed merchant webhooks.
 
@@ -108,5 +108,5 @@ signed merchant webhooks.
 - Deliveries/Protection claims: delivery confirmation, claims, evidence and resolution.
 - Refunds: provider-backed reversal requests and their status.
 - Compliance: merchant due diligence, suspicious activity and audit.
-- CECF: RTP/P2P status recovery and provider reconciliation.
+- CECF: collection/payout status recovery and provider reconciliation.
 - Payments: payment state, immutable fee decisions and status history.

@@ -1,19 +1,63 @@
 {% extends 'base.html' %}
 {% block title %}Developers · AmatoPay{% endblock %}
+{% block page_title %}Developers{% endblock %}
 {% block content %}
 <main id="main-content" tabindex="-1" class="p-4 sm:p-6 lg:p-8">
-    <header class="page-header"> {# This header is inside the <main> provided by base.html #}
+    {% if messages %}
+    <div class="portal-messages space-y-3 mb-6">
+        {% for message in messages %}
+        <div class="portal-message portal-message-{{ message.tags|default:'info' }} flex items-center justify-between p-4 rounded-lg shadow-sm">
+            <span class="flex items-center gap-2">{{ message }}</span>
+            <button class="text-slate-400 hover:text-slate-600" type="button" onclick="this.parentElement.remove()" aria-label="Dismiss">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <header class="page-header">
         <div>
             <p class="eyebrow">Build with AmatoPay</p>
             <h1>Developers</h1>
             <p class="page-subtitle">Manage integration credentials and monitor webhook activity.</p>
         </div>
-        <a class="button button-secondary"
-           href="{% url 'developer_docs' %}"
-           aria-label="Open API documentation">API documentation <span aria-hidden="true">↗</span></a>
+        <div class="header-actions">
+            <a class="button button-secondary" href="{% url 'developer_docs' %}" target="_blank" rel="noopener"
+               aria-label="Open API documentation">API documentation <span aria-hidden="true">↗</span></a>
+        </div>
     </header>
-    {% if new_api_key %}<section class="secret-reveal" role="status"><div><span>✓</span><div><strong>{{ new_api_key_name }} is ready</strong><p>Copy this secret now. For security, AmatoPay will never show it again.</p></div></div><div class="secret-value"><code data-secret-value>{{ new_api_key }}</code><button type="button" data-copy-secret>Copy key</button></div></section>{% endif %}
-    {% if new_webhook_secret %}<section class="secret-reveal" role="status"><div><span>✓</span><div><strong>Webhook signing secret is ready</strong><p>Copy it now and use it to verify AmatoPay signatures. It will not be shown again.</p></div></div><div class="secret-value"><code data-secret-value>{{ new_webhook_secret }}</code><button type="button" data-copy-secret>Copy secret</button></div></section>{% endif %}
+
+    {% if new_api_key %}
+    <section class="secret-reveal" role="status">
+        <div><span>✓</span><div><strong>{{ new_api_key_name }} is ready</strong><p>Copy this secret now. For security, AmatoPay will never show it again.</p></div></div>
+        <div class="secret-value"><code data-secret-value>{{ new_api_key }}</code><button type="button" data-copy-secret>Copy key</button></div>
+    </section>
+    {% endif %}
+    {% if new_webhook_secret %}
+    <section class="secret-reveal" role="status">
+        <div><span>✓</span><div><strong>Webhook signing secret is ready</strong><p>Copy it now and use it to verify AmatoPay signatures. It will not be shown again.</p></div></div>
+        <div class="secret-value"><code data-secret-value>{{ new_webhook_secret }}</code><button type="button" data-copy-secret>Copy secret</button></div>
+    </section>
+    {% endif %}
+
+    <section class="panel section">
+        <div class="panel-head">
+            <div>
+                <h2>Base URL &amp; environment</h2>
+                <p>All requests use your secret API key over HTTPS</p>
+            </div>
+            <span class="mode-pill mode-live"><span></span>Live</span>
+        </div>
+        <dl class="detail-grid">
+            <div><dt>API base URL</dt><dd><code>{{ api_base_url }}</code></dd></div>
+            <div><dt>Authentication</dt><dd><code>Authorization: Bearer &lt;secret key&gt;</code></dd></div>
+            <div><dt>Merchant code</dt><dd><code>{{ merchant.merchant_code }}</code></dd></div>
+            <div><dt>Webhook signature</dt><dd><code>t=&lt;ts&gt;,v1=&lt;hmac&gt;</code> — verify with your signing secret</dd></div>
+        </dl>
+        <p class="panel-note">First call: <code>GET {{ api_base_url }}/ping/</code> returns your account status and any pending verification steps.</p>
+    </section>
+
     <div class="two-column-grid">
         <section class="panel">
             <div class="panel-head">
@@ -23,81 +67,141 @@
                 </div>
                 <span class="count-badge">{{ keys|length }}</span>
             </div>
-            <form class="key-create-form"
-                  method="post"
-                  action="{% url 'portal:api-key-create' %}">{% csrf_token %}<label><span>Key name</span><input name="name"
-       maxlength="80"
-       required
-       placeholder="e.g. Website integration"></label><button class="button button-primary" type="submit">Create secret key</button></form>
+            <form class="key-create-form" method="post" action="{% url 'portal:api-key-create' %}">
+                {% csrf_token %}
+                <label>
+                    <span>Key name</span>
+                    <input name="name" maxlength="80" required placeholder="e.g. Website integration">
+                </label>
+                <button class="button button-primary" type="submit">Create secret key</button>
+            </form>
             <div class="table-scroll">
                 <table class="data-table compact-table">
                     <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Key</th>
-                            <th>Last used</th>
-                            <th>Actions</th>
-                        </tr>
+                        <tr><th>Name</th><th>Key</th><th>Last used</th><th>Actions</th></tr>
                     </thead>
                     <tbody>
-                        {% for k in keys %}<tr><td><strong>{{ k.name }}</strong>{% if not k.active %}<small class="key-revoked">Revoked</small>{% endif %}</td><td><code>{{ k.prefix }}••••</code></td><td>{% if k.last_used_at %}{{ k.last_used_at|timesince }} ago{% else %}<span class="quiet">Never</span>{% endif %}</td><td><div class="key-actions">{% if k.active %}<form method="post" action="{% url 'portal:api-key-rotate' k.id %}">{% csrf_token %}<button type="submit">Rotate</button></form><form method="post"
-      action="{% url 'portal:api-key-revoke' k.id %}"
-      onsubmit="return confirm('Revoke this API key? Requests using it will stop immediately.')">{% csrf_token %}<button class="danger-link" type="submit">Revoke</button></form>{% else %}<span class="quiet">Inactive</span>{% endif %}</div></td></tr>
-                    {% empty %}<tr><td colspan="4"><div class="empty-state small"><strong>No API keys</strong><p>Create a key to start integrating.</p></div></td></tr>{% endfor %}
+                        {% for k in keys %}
+                        <tr>
+                            <td><strong>{{ k.name }}</strong>{% if not k.active %} <small class="key-revoked">Revoked</small>{% endif %}</td>
+                            <td><code>{{ k.prefix }}••••</code></td>
+                            <td>{% if k.last_used_at %}{{ k.last_used_at|timesince }} ago{% else %}<span class="quiet">Never</span>{% endif %}</td>
+                            <td>
+                                <div class="key-actions">
+                                    {% if k.active %}
+                                    <form method="post" action="{% url 'portal:api-key-rotate' k.id %}">{% csrf_token %}<button type="submit">Rotate</button></form>
+                                    <form method="post" action="{% url 'portal:api-key-revoke' k.id %}"
+                                          onsubmit="return confirm('Revoke this API key? Requests using it will stop immediately.')">{% csrf_token %}<button class="danger-link" type="submit">Revoke</button></form>
+                                    {% else %}<span class="quiet">Inactive</span>{% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="4"><div class="empty-state small"><strong>No API keys</strong><p>Create a key to start integrating.</p></div></td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="panel">
+            <div class="panel-head">
+                <div>
+                    <h2>Webhook endpoints</h2>
+                    <p>Destinations receiving your events</p>
+                </div>
+                <span class="count-badge">{{ webhooks|length }}</span>
+            </div>
+            <form class="webhook-create-form" method="post" action="{% url 'portal:webhook-create' %}">
+                {% csrf_token %}
+                <label class="webhook-url">
+                    <span>HTTPS destination</span>
+                    <input type="url" name="url" required placeholder="https://merchant.bi/webhooks/amatopay">
+                </label>
+                <label>
+                    <span>Description</span>
+                    <input name="description" maxlength="160" placeholder="Production backend">
+                </label>
+                <fieldset>
+                    <legend>Events</legend>
+                    {% for event in webhook_event_choices %}
+                    <label><input type="checkbox" name="events" value="{{ event }}" checked> {{ event }}</label>
+                    {% endfor %}
+                </fieldset>
+                <button class="button button-primary" type="submit">Add endpoint</button>
+                <p>AmatoPay will generate a signing secret and show it once.</p>
+            </form>
+            <div class="table-scroll">
+                <table class="data-table compact-table">
+                    <thead>
+                        <tr><th>Endpoint</th><th>Events</th><th>Status</th><th>Actions</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for w in webhooks %}
+                        <tr>
+                            <td><strong>{{ w.description|default:'Webhook endpoint' }}</strong><span class="truncate quiet" title="{{ w.url }}">{{ w.url }}</span></td>
+                            <td><span class="quiet">{% if '*' in w.events %}All events{% else %}{{ w.events|length }} selected{% endif %}</span></td>
+                            <td>{% if w.active %}<span class="status-pill status-active"><span></span>Active</span>{% else %}<span class="status-pill status-pending"><span></span>Paused</span>{% endif %}</td>
+                            <td>
+                                <div class="key-actions">
+                                    <form method="post" action="{% url 'portal:webhook-test' w.id %}">{% csrf_token %}<button type="submit">Send test</button></form>
+                                    <form method="post" action="{% url 'portal:webhook-toggle' w.id %}">{% csrf_token %}<button type="submit">{% if w.active %}Pause{% else %}Activate{% endif %}</button></form>
+                                    <form method="post" action="{% url 'portal:webhook-rotate-secret' w.id %}"
+                                          onsubmit="return confirm('Rotate this signing secret? Your current secret will stop working immediately.')">{% csrf_token %}<button class="danger-link" type="submit">Rotate secret</button></form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="4"><div class="empty-state small"><strong>No webhook endpoint</strong><p>Add your HTTPS destination above. No API call is required.</p></div></td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <section class="panel section">
+        <div class="panel-head">
+            <div>
+                <h2>Recent webhook deliveries</h2>
+                <p>Delivery status and the exact response your endpoint returned — use it to debug failures.</p>
+            </div>
+        </div>
+        <div class="table-scroll">
+            <table class="data-table">
+                <thead>
+                    <tr><th>Event</th><th>Status</th><th>HTTP</th><th>Attempts</th><th>Your endpoint's response</th><th>Updated</th></tr>
+                </thead>
+                <tbody>
+                    {% for d in deliveries %}
+                    <tr>
+                        <td>
+                            <span class="event-type">{{ d.event.type }}</span>
+                            <code class="wh-evt">{{ d.event.event_id }}</code>
+                        </td>
+                        <td><span class="status-pill status-{{ d.status }}"><span></span>{{ d.get_status_display }}</span></td>
+                        <td>{% if d.last_status_code %}<code>{{ d.last_status_code }}</code>{% else %}<span class="muted">—</span>{% endif %}</td>
+                        <td>{{ d.attempts }}{% if d.status == 'retrying' and d.next_retry_at %} · retry {{ d.next_retry_at|timeuntil }}{% endif %}</td>
+                        <td>
+                            {% if d.last_response_body or d.last_error %}
+                            <details class="wh-response">
+                                <summary>{{ d.last_error|default:'View response' }}</summary>
+                                {% if d.last_response_headers %}<pre class="wh-body wh-headers">{% for k, v in d.last_response_headers.items %}{{ k }}: {{ v }}
+{% endfor %}</pre>{% endif %}
+                                <pre class="wh-body">{{ d.last_response_body|default:'(empty response body)' }}</pre>
+                            </details>
+                            {% else %}
+                            <span class="muted">No response yet</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ d.updated_at|date:'d M Y, H:i' }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6"><div class="empty-state"><span>⌁</span><strong>No deliveries yet</strong><p>Add an endpoint and send a test event — delivery attempts and responses show up here.</p></div></td></tr>
+                    {% endfor %}
                 </tbody>
             </table>
         </div>
     </section>
-    <section class="panel">
-        <div class="panel-head">
-            <div>
-                <h2>Webhook endpoints</h2>
-                <p>Destinations receiving your events</p>
-            </div>
-            <span class="count-badge">{{ webhooks|length }}</span>
-        </div>
-        <form class="webhook-create-form" method="post" action="{% url 'portal:webhook-create' %}">{% csrf_token %}<label class="webhook-url"><span>HTTPS destination</span><input type="url" name="url" required placeholder="https://merchant.bi/webhooks/amatopay"></label><label><span>Description</span><input name="description" maxlength="160" placeholder="Production backend"></label><fieldset><legend>Events</legend>{% for event in webhook_event_choices %}<label><input type="checkbox" name="events" value="{{ event }}" checked> {{ event }}</label>{% endfor %}</fieldset><button class="button button-primary" type="submit">Add endpoint</button><p>AmatoPay will generate a signing secret and show it once.</p></form>
-        <div class="table-scroll">
-            <table class="data-table compact-table">
-                <thead>
-                    <tr>
-                        <th>Endpoint</th>
-                        <th>Events</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for w in webhooks %}<tr><td><strong>{{ w.description|default:'Webhook endpoint' }}</strong><span class="truncate quiet" title="{{ w.url }}">{{ w.url }}</span></td><td><span class="quiet">{% if '*' in w.events %}All events{% else %}{{ w.events|length }} selected{% endif %}</span></td><td>{% if w.active %}<span class="status-pill status-active"><span></span>Active</span>{% else %}<span class="status-pill status-inactive"><span></span>Paused</span>{% endif %}</td><td><div class="key-actions"><form method="post" action="{% url 'portal:webhook-test' w.id %}">{% csrf_token %}<button type="submit">Send test</button></form><form method="post" action="{% url 'portal:webhook-toggle' w.id %}">{% csrf_token %}<button type="submit">{% if w.active %}Pause{% else %}Activate{% endif %}</button></form><form method="post" action="{% url 'portal:webhook-rotate-secret' w.id %}" onsubmit="return confirm('Rotate this signing secret? Your current secret will stop working immediately.')">{% csrf_token %}<button class="danger-link" type="submit">Rotate secret</button></form></div></td></tr>
-                {% empty %}<tr><td colspan="4"><div class="empty-state small"><strong>No webhook endpoint</strong><p>Add your HTTPS destination above. No API call is required.</p></div></td></tr>{% endfor %}
-            </tbody>
-        </table>
-    </div>
-</section>
-</div>
-<section class="panel section">
-    <div class="panel-head">
-        <div>
-            <h2>Recent webhook events</h2>
-            <p>Latest events emitted by your account</p>
-        </div>
-    </div>
-    <div class="table-scroll">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>Event ID</th>
-                    <th>Type</th>
-                    <th>Object</th>
-                    <th>Created</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for e in events %}<tr><td><code>{{ e.event_id }}</code></td><td><span class="event-type">{{ e.type }}</span></td><td>{{ e.object_id|default:'—' }}</td><td>{{ e.created_at|date:'d M Y, H:i' }}</td></tr>
-            {% empty %}<tr><td colspan="4"><div class="empty-state"><span>⌁</span><strong>No events delivered</strong><p>Webhook activity will show up here.</p></div></td></tr>{% endfor %}
-        </tbody>
-    </table>
-</div>
-</section>
 </main>
 {% endblock %}

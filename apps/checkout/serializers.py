@@ -8,6 +8,19 @@ from apps.gateway.services import AliasNotPayableError
 from .models import PaymentSession
 
 
+class MerchantAliasVerificationSerializer(serializers.Serializer):
+    payer_alias = serializers.CharField(max_length=160, trim_whitespace=True)
+
+
+class MerchantAliasVerificationResultSerializer(serializers.Serializer):
+    alias_type = serializers.CharField()
+    payer_alias = serializers.CharField()
+    found = serializers.BooleanField()
+    status = serializers.CharField()
+    customer_full_name = serializers.CharField()
+    currency = serializers.CharField()
+
+
 class PaymentSessionSerializer(serializers.ModelSerializer):
     payer_alias = serializers.CharField(max_length=160, trim_whitespace=True)
     total_amount = serializers.DecimalField(
@@ -37,6 +50,7 @@ class PaymentSessionSerializer(serializers.ModelSerializer):
             "payer_alias",
             "payer_display_name",
             "return_url",
+            "require_delivery_confirmation",
             "expires_at",
             "status",
             "metadata",
@@ -75,6 +89,16 @@ class PaymentSessionSerializer(serializers.ModelSerializer):
         except ObjectDoesNotExist:
             payment = None
         return payment.status if payment else obj.status
+
+    def validate_require_delivery_confirmation(self, value):
+        request = self.context.get("request")
+        merchant = getattr(request, "merchant", None)
+        if value is False and not (merchant and merchant.instant_settlement_enabled):
+            raise serializers.ValidationError(
+                "This merchant is not enabled for instant settlement. Contact "
+                "AmatoPay to request the capability."
+            )
+        return value
 
     def create(self, validated_data):
         request = self.context["request"]

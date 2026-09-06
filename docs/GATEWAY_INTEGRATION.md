@@ -5,7 +5,7 @@ The internal rail uses the supplied BurundiPay/MobileCash gateway contract.
 
 | Provider | Authentication | Collection | Settlement |
 | --- | --- | --- | --- |
-| BurundiPay/MobileCash | Username/password → cached JWT | Alias, RTP, transaction polling | P2P to verified merchant alias |
+| BurundiPay/MobileCash | Username/password → cached JWT | Alias, collection, transaction polling | P2P to verified merchant alias |
 
 ## Database configuration
 
@@ -21,7 +21,7 @@ credentials are operational secrets. For deployments requiring KMS/HSM-backed
 encryption, integrate field-level encryption before entering live credentials.
 
 The `creditor_alias` field is the verified AmatoPay fiduciary/collection alias. It
-receives every customer RTP collection and is also the payer alias for released
+receives every customer collection and is also the payer alias for released
 merchant P2P settlements. It must identify the dedicated account used for
 e-commerce funds, not an AmatoPay operating account. Credentials stay server-side and the JWT is cached until just
 before expiry. A `401` invalidates the cached token and causes one authenticated

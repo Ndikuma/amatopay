@@ -2,7 +2,7 @@ from rest_framework import viewsets
 from rest_framework.exceptions import ValidationError
 
 from apps.developers.authentication import MerchantApiKeyAuthentication
-from apps.developers.permissions import HasMerchantApiKey
+from apps.developers.permissions import IsActiveMerchant
 from apps.payments.models import Payment
 
 from .models import Refund
@@ -13,7 +13,7 @@ class RefundViewSet(viewsets.ModelViewSet):
     queryset = Refund.objects.none()
     serializer_class = RefundSerializer
     authentication_classes = [MerchantApiKeyAuthentication]
-    permission_classes = [HasMerchantApiKey]
+    permission_classes = [IsActiveMerchant]
 
     def get_queryset(self):
         return Refund.objects.filter(payment__merchant=self.request.merchant).order_by(

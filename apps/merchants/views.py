@@ -1,23 +1,82 @@
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.views import APIView
+from drf_spectacular.utils import extend_schema
 from django.utils import timezone
 from .models import (
     Merchant,
     MerchantKYB,
     MerchantDocument,
-    BeneficialOwner,
     MerchantSettlementAccount,
 )
 from .serializers import (
     MerchantSerializer,
     MerchantKYBSerializer,
     MerchantDocumentSerializer,
-    BeneficialOwnerSerializer,
     MerchantSettlementAccountSerializer,
 )
+from .services import activation_status
 from apps.gateway import client as rail_client
-from apps.developers.permissions import IsOperationsUser
+from apps.developers.authentication import MerchantApiKeyAuthentication
+from apps.developers.permissions import HasMerchantApiKey, IsOperationsUser
+
+
+class MerchantPingView(APIView):
+    """Merchant-facing health check and onboarding status.
+
+    Use it to confirm your API key works and to see whether your account is
+    verified and cleared to operate with AmatoPay.
+    """
+
+    # Same API key as every other endpoint (Bearer or X-Api-Key). Uses
+    # HasMerchantApiKey (not IsActiveMerchant) so a merchant still in review
+    # can call it to see what is left to activate.
+    authentication_classes = [MerchantApiKeyAuthentication]
+    permission_classes = [HasMerchantApiKey]
+
+    @extend_schema(
+        summary="Ping AmatoPay and read your merchant activation status",
+        responses={200: dict},
+    )
+    def get(self, request):
+        merchant = request.merchant
+        status = activation_status(merchant)
+        if status["can_operate"]:
+            message = (
+                f"Welcome to AmatoPay, {merchant.display_name}. "
+                "Your account is verified — you can start accepting payments."
+            )
+        else:
+            message = (
+                f"Welcome, {merchant.display_name}. Your account is still in "
+                "review; some verification steps are pending."
+            )
+        return Response(
+            {
+                "message": message,
+                "merchant": {
+                    "code": merchant.merchant_code,
+                    "display_name": merchant.display_name,
+                    "status": merchant.status,
+                    "country": merchant.country,
+                    "default_currency": merchant.default_currency,
+                },
+                "can_operate": status["can_operate"],
+                "verification": {
+                    "readiness": status["readiness"],
+                    "completed": status["completed"],
+                    "total": status["total"],
+                    "checks": status["checks"],
+                    "pending": [
+                        {"key": key, "label": status["labels"][key]}
+                        for key in status["pending"]
+                    ],
+                },
+                "api_key_prefix": getattr(request.api_key, "prefix", ""),
+                "server_time": timezone.now().isoformat(),
+            }
+        )
 
 
 class OperationsModelViewSet(ModelViewSet):
@@ -41,12 +100,6 @@ class MerchantDocumentViewSet(OperationsModelViewSet):
     queryset = MerchantDocument.objects.select_related("merchant").all()
     serializer_class = MerchantDocumentSerializer
     filterset_fields = ["merchant", "document_type", "verified"]
-
-
-class BeneficialOwnerViewSet(OperationsModelViewSet):
-    queryset = BeneficialOwner.objects.select_related("merchant").all()
-    serializer_class = BeneficialOwnerSerializer
-    filterset_fields = ["merchant", "pep", "sanctions_match"]
 
 
 class MerchantSettlementAccountViewSet(OperationsModelViewSet):
@@ -83,3 +136,4 @@ class MerchantSettlementAccountViewSet(OperationsModelViewSet):
             account.verification_status = MerchantSettlementAccount.Verification.FAILED
         account.save()
         return Response(self.get_serializer(account).data)
+

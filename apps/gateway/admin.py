@@ -10,12 +10,10 @@ from .provider import MobileCashGateway
 from .release_codes import decrypt_release_code
 from .models import (
     AliasVerification,
+    GatewayCallback,
     GatewayConfig,
+    GatewayRequest,
     GatewayTransactionPoll,
-    P2PCallback,
-    P2PRequest,
-    RTPCallback,
-    RTPRequest,
 )
 
 
@@ -86,14 +84,24 @@ class GatewayConfigAdmin(ModelAdmin):
         self.message_user(request, f"{config.name} is now active.")
 
 
-@admin.register(RTPRequest)
-class RTPRequestAdmin(ReadOnlyAmatoModelAdmin):
-    """Internal RTP view; the encrypted database value is never rendered."""
+@admin.register(GatewayRequest)
+class GatewayRequestAdmin(ReadOnlyAmatoModelAdmin):
+    """Internal collection/payout view; the encrypted release code is never rendered."""
+
+    list_display = (
+        "request_id",
+        "rail",
+        "status",
+        "provider_reference",
+        "created_at",
+    )
+    list_filter = ("rail", "status")
+    search_fields = ("request_id", "provider_reference")
 
     def get_readonly_fields(self, request, obj=None):
         fields = tuple(
             field.name
-            for field in RTPRequest._meta.fields
+            for field in GatewayRequest._meta.fields
             if field.name != "release_code_ciphertext"
         )
         return (*fields, "secure_delivery_code")
@@ -112,10 +120,11 @@ class RTPRequestAdmin(ReadOnlyAmatoModelAdmin):
             'style="font-family:monospace;font-size:1.1rem;letter-spacing:.15em;'
             'max-width:10rem;padding:.4rem .6rem">'
             '<button type="button" class="button" '
-            'data-rtp-id="{}" data-action="resend-sms" '
+            'data-collection-id="{}" data-action="resend-sms" '
             'onclick="navigator.clipboard.writeText(this.previousElementSibling.value);'
             'this.textContent=&quot;Copied&quot;">Copy</button></span>',
             code,
+            obj.request_id,
         )
 
 
@@ -124,19 +133,19 @@ class RTPRequestAdmin(ReadOnlyAmatoModelAdmin):
     @admin.action(description="Resend secure delivery code via SMS")
     def resend_delivery_code_sms(self, request, queryset):
         sent_count = 0
-        for rtp in queryset:
-            if not rtp.release_code_ciphertext or not rtp.payment:
+        for collection in queryset:
+            if not collection.release_code_ciphertext or not collection.payment:
                 continue
             try:
-                code = decrypt_release_code(rtp.release_code_ciphertext)
-                phone_number = rtp.payment.payer_alias
+                code = decrypt_release_code(collection.release_code_ciphertext)
+                phone_number = collection.payment.payer_alias
                 message = f"Your AmatoPay secure delivery code is: {code}"
                 client.send_sms(phone_number, message)
                 sent_count += 1
             except Exception as exc:
                 self.message_user(
                     request,
-                    f"Could not resend code for {rtp.request_id}: {exc}",
+                    f"Could not resend code for {collection.request_id}: {exc}",
                     level=messages.ERROR,
                 )
         if sent_count:
@@ -146,7 +155,7 @@ class RTPRequestAdmin(ReadOnlyAmatoModelAdmin):
 
 
 admin.site.register(
-    [AliasVerification, RTPCallback, P2PRequest, P2PCallback],
+    [AliasVerification, GatewayCallback],
     ReadOnlyAmatoModelAdmin,
 )
 

@@ -16,7 +16,7 @@
 ## Public statuses
 
 Payment: `created`, `processing`, `paid`, `failed`, `cancelled`, `refunded`, `settled`.
-Internal states such as RTP and fiduciary release can remain visible in operations but do not need to leak provider-specific details to merchants.
+Internal states such as collection and fiduciary release can remain visible in operations but do not need to leak provider-specific details to merchants.
 
 ## Webhook signature
 

@@ -8,7 +8,7 @@ from django.utils import timezone
 
 from apps.deliveries.models import ProtectionClaim
 from apps.fiduciary.models import FundHold
-from apps.gateway.models import GatewayConfig, P2PRequest, RTPRequest
+from apps.gateway.models import GatewayConfig, GatewayRequest
 from apps.merchants.models import Merchant, MerchantKYB
 from apps.payments.models import Payment
 from apps.settlements.models import Settlement
@@ -100,9 +100,7 @@ def dashboard_callback(request, context):
         ]
     ).count()
     gateway = GatewayConfig.active()
-    pending_gateway = RTPRequest.objects.filter(
-        status__in=["pending", "awaiting_approval", "processing"]
-    ).count() + P2PRequest.objects.filter(
+    pending_gateway = GatewayRequest.objects.filter(
         status__in=["pending", "awaiting_approval", "processing"]
     ).count()
     webhook_since = now - timedelta(hours=24)
@@ -171,7 +169,7 @@ def dashboard_callback(request, context):
             [
                 Payment.Status.CREATED,
                 Payment.Status.ALIAS_VERIFIED,
-                Payment.Status.RTP_PENDING,
+                Payment.Status.COLLECTION_PENDING,
                 Payment.Status.AWAITING_APPROVAL,
                 Payment.Status.PROCESSING,
                 Payment.Status.SETTLEMENT_PROCESSING,
@@ -279,8 +277,8 @@ def dashboard_callback(request, context):
                 {
                     "label": "Gateway queue",
                     "value": pending_gateway,
-                    "detail": "RTP and P2P in progress",
-                    "url": _admin_url("admin:cecf_rtprequest_changelist"),
+                    "detail": "Collections and payouts in progress",
+                    "url": _admin_url("admin:cecf_gatewayrequest_changelist"),
                 },
                 {
                     "label": "Webhook health (24h)",

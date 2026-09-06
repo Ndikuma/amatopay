@@ -64,36 +64,40 @@ class ProductionApiSecurityTests(TestCase):
         self.client.force_authenticate(user=staff)
         self.assertEqual(self.client.get("/api/v1/merchants/").status_code, 404)
 
-    def test_merchant_settlements_are_tenant_scoped_and_payout_route_is_absent(self):
+    def test_non_active_merchant_key_can_ping_but_not_transact(self):
+        pending = Merchant.objects.create(
+            merchant_code="AMP-PENDING-1",
+            legal_name="Pending SA",
+            display_name="Pending",
+            status=Merchant.Status.PENDING_KYB,
+        )
+        _, raw = MerchantApiKey.issue(pending, "Pending key")
+        self.client.credentials(HTTP_X_API_KEY=raw)
+
+        self.assertEqual(self.client.get("/api/v1/ping/").status_code, 200)
+        self.assertEqual(
+            self.client.get("/api/v1/checkout/alias-verifications/?payer_alias=x").status_code,
+            403,
+        )
+        self.assertEqual(
+            self.client.post("/api/v1/checkout/sessions/", {}, format="json").status_code,
+            403,
+        )
+
+    def test_settlement_api_is_not_exposed(self):
         own_payment = self.payment_for(self.merchant, "OWN")
-        other_payment = self.payment_for(self.other_merchant, "OTHER")
-        own = Settlement.objects.create(
+        Settlement.objects.create(
             merchant=self.merchant,
             payment=own_payment,
             gross_amount=own_payment.amount,
             merchant_fee=own_payment.fee_amount,
             net_amount=own_payment.net_amount,
         )
-        Settlement.objects.create(
-            merchant=self.other_merchant,
-            payment=other_payment,
-            gross_amount=other_payment.amount,
-            merchant_fee=other_payment.fee_amount,
-            net_amount=other_payment.net_amount,
-        )
         self.client.credentials(HTTP_X_API_KEY=self.raw_key)
 
-        response = self.client.get("/api/v1/settlements/items/")
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["count"], 1)
-        self.assertEqual(response.json()["results"][0]["reference"], own.reference)
-        self.assertEqual(
-            self.client.post(
-                f"/api/v1/settlements/items/{own.id}/payout/", format="json"
-            ).status_code,
-            404,
-        )
+        # Merchants review settlements in their dashboard, not via the API.
+        self.assertEqual(self.client.get("/api/v1/settlements/items/").status_code, 404)
+        self.assertEqual(self.client.get("/api/v1/settlements/").status_code, 404)
 
     def test_refund_api_is_not_exposed(self):
         other_payment = self.payment_for(self.other_merchant, "OTHER-REFUND")

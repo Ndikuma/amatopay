@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+{% block title %}Choose a plan · AmatoPay{% endblock %}
+{% block page_title %}Choose a plan{% endblock %}
+{% block content %}
+<main id="main-content" tabindex="-1" class="p-4 sm:p-6 lg:p-8">
+    {% if messages %}
+    <div class="portal-messages space-y-3 mb-6">
+        {% for message in messages %}
+        <div class="portal-message portal-message-{{ message.tags|default:'info' }} flex items-center justify-between p-4 rounded-lg shadow-sm">
+            <span class="flex items-center gap-2">{{ message }}</span>
+            <button class="text-slate-400 hover:text-slate-600" type="button" onclick="this.parentElement.remove()" aria-label="Dismiss">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <header class="page-header">
+        <div>
+            <p class="eyebrow">Billing</p>
+            <h1>Choose a plan</h1>
+            <p class="page-subtitle">
+                {% if pricing.mode == 'plan' %}
+                    You're currently on <strong>{{ pricing.name }}</strong> — {{ pricing.used }} of
+                    {{ pricing.limit|default:"unlimited" }} transactions used this month.
+                {% else %}
+                    You're on pay-as-you-go. Pick a monthly plan for a fixed price and 0% per-transaction fees.
+                {% endif %}
+            </p>
+        </div>
+        <div class="header-actions">
+            <a class="button button-secondary" href="{% url 'portal:billing' %}">Back to billing</a>
+        </div>
+    </header>
+
+    <section class="trust-notice">
+        <div class="trust-notice-icon">◆</div>
+        <div>
+            <strong>Plan changes are paid up front by mobile money.</strong>
+            <p>Confirm the number to charge below. After you submit, approve the payment request on your phone to activate the plan.</p>
+        </div>
+    </section>
+
+    <form method="post" action="{% url 'portal:plan-request' %}">
+        {% csrf_token %}
+        <section class="panel section">
+            <div class="panel-head">
+                <div>
+                    <h2>Available plans</h2>
+                    <p>Allowances reset on the first of each month</p>
+                </div>
+            </div>
+            <div class="plan-options">
+                {% for plan in plans %}
+                <label class="plan-option{% if plan.code == pricing.plan_code %} is-current{% elif plan.code == 'business' %} is-featured{% endif %}">
+                    <span class="plan-option-name">
+                        <span>
+                            <input type="radio" name="plan_code" value="{{ plan.code }}"
+                                   {% if plan.code == pricing.plan_code %}disabled{% elif forloop.first %}required{% endif %}>
+                            {{ plan.name }}
+                        </span>
+                        {% if plan.code == pricing.plan_code %}<span class="plan-option-tag">Current</span>
+                        {% elif plan.code == 'business' %}<span class="plan-option-tag">Popular</span>{% endif %}
+                    </span>
+                    <span class="plan-option-price">
+                        {% if plan.monthly_price is None %}Custom<small>Contract pricing — contact sales</small>
+                        {% elif plan.monthly_price == 0 %}{{ plan.transaction_fee_percentage|floatformat:"-2" }}%<small>per transaction, no monthly fee</small>
+                        {% else %}{{ plan.monthly_price|floatformat:0 }}<small>{{ plan.currency }} / month</small>{% endif %}
+                    </span>
+                    <p class="plan-option-desc">{{ plan.description }}</p>
+                    <ul>
+                        {% if plan.included_transactions_per_month %}
+                            <li>{{ plan.included_transactions_per_month }} payments included / month</li>
+                        {% elif plan.monthly_price %}
+                            <li>Unlimited payments / month</li>
+                        {% endif %}
+                        {% if plan.monthly_price %}<li>0% fee on included payments</li>{% endif %}
+                        {% for feature in plan.features|slice:":3" %}<li>{{ feature }}</li>{% endfor %}
+                    </ul>
+                </label>
+                {% empty %}
+                <div class="empty-state"><span>◆</span><strong>No plans available</strong><p>Contact AmatoPay to discuss pricing.</p></div>
+                {% endfor %}
+            </div>
+        </section>
+
+        {% if plans %}
+        <section class="panel section">
+            <div class="panel-head">
+                <div>
+                    <h2>Payment details</h2>
+                    <p>The mobile money number charged for the subscription</p>
+                </div>
+            </div>
+            <div class="plan-form-inline">
+                <label>
+                    Mobile money number
+                    <input type="text" name="payer_alias" inputmode="numeric" required
+                           placeholder="e.g. 25779123456">
+                </label>
+                <label>
+                    Note <span class="quiet">(optional)</span>
+                    <textarea name="note" rows="3" maxlength="500"
+                              placeholder="Anything AmatoPay should know about this change"></textarea>
+                </label>
+                <button class="button button-primary" type="submit">
+                    Submit &amp; pay <span aria-hidden="true">→</span>
+                </button>
+                <p class="quiet" style="font-size:10px;margin:0">
+                    Need a custom or enterprise plan? <a class="text-link" href="mailto:{{ sales_email }}">Talk to sales</a>.
+                </p>
+            </div>
+        </section>
+        {% endif %}
+    </form>
+</main>
+{% endblock %}

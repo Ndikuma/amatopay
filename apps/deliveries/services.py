@@ -7,6 +7,7 @@ from apps.gateway.services import start_merchant_payout
 from apps.fiduciary.models import FundHold
 from apps.fiduciary.services import release_hold
 from apps.payments.models import Payment
+from apps.webhooks.services import emit_event
 
 from .models import (
     Delivery,
@@ -41,9 +42,9 @@ def _validate_release_code(payment, secure_code):
 def _erase_release_code(payment):
     payment.release_code_hash = ""
     payment.save(update_fields=["release_code_hash", "updated_at"])
-    if hasattr(payment, "rtp"):
-        payment.rtp.release_code_ciphertext = ""
-        payment.rtp.save(update_fields=["release_code_ciphertext", "updated_at"])
+    if hasattr(payment, "collection"):
+        payment.collection.release_code_ciphertext = ""
+        payment.collection.save(update_fields=["release_code_ciphertext", "updated_at"])
 
 
 def confirm_delivery_with_code(payment, secure_code, delivery_data=None):
@@ -119,11 +120,105 @@ def confirm_delivery_with_code(payment, secure_code, delivery_data=None):
             release_hold(hold)
             settlement = payment.settlement
             transaction.on_commit(lambda: start_merchant_payout(settlement))
+            if created:
+                emit_event(
+                    payment.merchant,
+                    "delivery.confirmed",
+                    {
+                        "payment_reference": payment.reference,
+                        "confirmed_by": confirmation.method,
+                        "status": payment.status,
+                        "amount": str(payment.amount),
+                        "currency": payment.currency,
+                    },
+                    "payment",
+                    payment.reference,
+                )
             return confirmation, created
 
     # Raise after the transaction commits so a failed attempt cannot be rolled back.
     if invalid_code:
         raise PermissionDenied("Invalid secure code.")
+
+
+@transaction.atomic
+def confirm_delivery_instant(payment):
+    """Auto-confirm delivery for an instant-settlement session and release funds.
+
+    Called from ``apply_payment_collection_status`` when the checkout session was
+    created with ``require_delivery_confirmation=False``. Mirrors the release path
+    of :func:`confirm_delivery_with_code` but performs no payer verification —
+    there is no secure code for these payments.
+    """
+    payment = Payment.objects.select_for_update().select_related("merchant", "session").get(pk=payment.pk)
+
+    if payment.release_code_confirmed_at:
+        return getattr(getattr(payment, "delivery", None), "confirmation", None), False
+    if payment.status != Payment.Status.DELIVERY_PENDING:
+        raise ValidationError(
+            {"detail": "Payment must be collected and held before settlement."}
+        )
+
+    has_destination = payment.merchant.settlement_accounts.filter(
+        alias_type="MOBILE",
+        verification_status="verified",
+        is_primary=True,
+        is_active=True,
+        currency=payment.currency,
+    ).exists()
+    if not has_destination:
+        raise ValidationError(
+            {
+                "detail": (
+                    "Merchant must have an active verified primary MOBILE settlement "
+                    f"alias for {payment.currency} before instant settlement."
+                )
+            }
+        )
+
+    now = timezone.now()
+    delivery, _ = Delivery.objects.get_or_create(payment=payment)
+    delivery.status = Delivery.Status.DELIVERED
+    delivery.delivered_at = delivery.delivered_at or now
+    delivery.save()
+    confirmation, created = DeliveryConfirmation.objects.get_or_create(
+        delivery=delivery,
+        defaults={
+            "decision": DeliveryConfirmation.Decision.CONFIRMED,
+            "confirmed_by": DeliveryConfirmation.Method.INSTANT_SETTLEMENT,
+            "method": DeliveryConfirmation.Method.INSTANT_SETTLEMENT,
+            "metadata": {"proof_method": "instant_settlement"},
+        },
+    )
+
+    payment.release_code_confirmed_at = now
+    _erase_release_code(payment)
+    payment.save(
+        update_fields=["release_code_confirmed_at", "release_code_hash", "updated_at"]
+    )
+
+    hold = payment.fund_hold
+    hold.status = FundHold.Status.DELIVERY_CONFIRMED
+    hold.save(update_fields=["status", "updated_at"])
+    release_hold(hold)
+    settlement = payment.settlement
+    transaction.on_commit(lambda: start_merchant_payout(settlement))
+
+    if created:
+        emit_event(
+            payment.merchant,
+            "delivery.confirmed",
+            {
+                "payment_reference": payment.reference,
+                "confirmed_by": confirmation.method,
+                "status": payment.status,
+                "amount": str(payment.amount),
+                "currency": payment.currency,
+            },
+            "payment",
+            payment.reference,
+        )
+    return confirmation, created
 
 
 def _normalize_alias(value):
@@ -222,6 +317,21 @@ def request_delivery_review(
             hold.status = FundHold.Status.DISPUTED
             hold.freeze_reason = f"Customer delivery review: {reason}"
             hold.save(update_fields=["status", "freeze_reason", "updated_at"])
+            emit_event(
+                payment.merchant,
+                "payment.disputed",
+                {
+                    "payment_reference": payment.reference,
+                    "claim_reference": str(claim.pk),
+                    "reason": reason,
+                    "description": description,
+                    "status": payment.status,
+                    "amount": str(payment.amount),
+                    "currency": payment.currency,
+                },
+                "payment",
+                payment.reference,
+            )
             result = (claim, True)
     if invalid_code:
         raise PermissionDenied("Invalid secure code.")

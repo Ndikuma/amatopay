@@ -46,11 +46,11 @@ def verify_alias(payload):
     return result
 
 
-def create_rtp(payload):
-    return _mobilecash().create_rtp(payload)
+def create_collection(payload):
+    return _mobilecash().create_collection(payload)
 
 
-def get_rtp_status(reference):
+def get_collection_status(reference):
     return _mobilecash().get_transaction(reference)
 
 

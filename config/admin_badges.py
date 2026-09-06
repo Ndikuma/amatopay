@@ -1,7 +1,7 @@
 from apps.compliance.models import SuspiciousTransaction
 from apps.deliveries.models import ProtectionClaim
 from apps.fiduciary.models import FundHold
-from apps.gateway.models import GatewayConfig, P2PRequest, RTPRequest
+from apps.gateway.models import GatewayConfig, GatewayRequest
 from apps.merchants.models import MerchantApplication, MerchantKYB
 from apps.payments.models import Payment
 from apps.refunds.models import Refund
@@ -16,7 +16,7 @@ def _badge(count):
 def pending_payments(request):
     return _badge(
         Payment.objects.filter(
-            status__in=["rtp_pending", "awaiting_approval", "processing"]
+            status__in=["collection_pending", "awaiting_approval", "processing"]
         ).count()
     )
 
@@ -59,18 +59,21 @@ def gateway_state(request):
     return "Live" if GatewayConfig.active() else "Setup"
 
 
-def pending_rtp(request):
+_IN_FLIGHT = ["pending", "awaiting_approval", "processing"]
+
+
+def pending_collections(request):
     return _badge(
-        RTPRequest.objects.filter(
-            status__in=["pending", "awaiting_approval", "processing"]
+        GatewayRequest.objects.filter(
+            rail=GatewayRequest.Rail.COLLECTION, status__in=_IN_FLIGHT
         ).count()
     )
 
 
 def pending_p2p(request):
     return _badge(
-        P2PRequest.objects.filter(
-            status__in=["pending", "awaiting_approval", "processing"]
+        GatewayRequest.objects.filter(
+            rail=GatewayRequest.Rail.P2P, status__in=_IN_FLIGHT
         ).count()
     )
 

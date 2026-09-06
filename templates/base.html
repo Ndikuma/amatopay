@@ -79,13 +79,6 @@
                         </svg>
                         <span class="nav-text">Developers</span>
                     </a>
-                    <a href="{% url 'developer_docs' %}" target="_blank" rel="noopener noreferrer">
-                        <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
-                        </svg>
-                        <span class="nav-text">API Documentation</span>
-                        <span class="nav-badge nav-badge-external">↗</span>
-                    </a>
                 </div>
 
                 <!-- Account Section -->
@@ -148,6 +141,19 @@
 
                         <!-- Right Side Actions -->
                         <div class="flex items-center gap-2 sm:gap-4">
+                            <!-- API docs (header only) -->
+                            <a href="{% url 'developer_docs' %}" target="_blank" rel="noopener noreferrer"
+                               class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-medium text-slate-600 hover:text-indigo-600 hover:bg-slate-50 transition-colors"
+                               title="Open the API documentation in a new tab">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+                                </svg>
+                                <span class="hidden sm:inline">API docs</span>
+                                <svg class="hidden sm:block h-3.5 w-3.5 opacity-60" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                                </svg>
+                            </a>
+
                             <!-- User Profile -->
                             {% if merchant %}
                             <div class="relative" id="profile-menu">
@@ -214,8 +220,9 @@
 
                 <!-- Desktop Navigation - Hidden on mobile/tablet -->
                 <div class="hidden md:flex items-center gap-8">
-                    <a href="{% url 'billing_public:plan_list' %}" class="text-sm font-medium transition-colors {% if request.resolver_match.app_name == 'billing_public' %}text-indigo-600{% else %}text-slate-600 hover:text-indigo-600{% endif %}">Pricing</a>
+                    <a href="{% url 'plan_list' %}" class="text-sm font-medium transition-colors {% if request.resolver_match.url_name == 'plan_list' %}text-indigo-600{% else %}text-slate-600 hover:text-indigo-600{% endif %}">Pricing</a>
                     <a href="{% url 'developer_docs' %}" class="text-sm font-medium transition-colors {% if request.resolver_match.url_name == 'developer_docs' %}text-indigo-600{% else %}text-slate-600 hover:text-indigo-600{% endif %}">Developers</a>
+                    <a href="{% url 'delivery_lookup' %}" class="text-sm font-medium transition-colors {% if request.resolver_match.url_name == 'delivery_lookup' or request.resolver_match.url_name == 'delivery_decision' %}text-indigo-600{% else %}text-slate-600 hover:text-indigo-600{% endif %}">Confirm a delivery</a>
                 </div>
 
                 <!-- Desktop Auth Buttons - Hidden on mobile/tablet -->
@@ -243,8 +250,9 @@
             <!-- Mobile Menu - Hidden on desktop -->
             <div class="md:hidden hidden" id="mobile-menu" role="navigation" aria-label="Mobile Navigation">
                 <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-                    <a href="{% url 'billing_public:plan_list' %}" class="block px-3 py-2 rounded-md text-base font-medium {% if request.resolver_match.app_name == 'billing_public' %}bg-indigo-50 text-indigo-700{% else %}text-slate-700 hover:bg-slate-50 hover:text-slate-900{% endif %}">Pricing</a>
+                    <a href="{% url 'plan_list' %}" class="block px-3 py-2 rounded-md text-base font-medium {% if request.resolver_match.url_name == 'plan_list' %}bg-indigo-50 text-indigo-700{% else %}text-slate-700 hover:bg-slate-50 hover:text-slate-900{% endif %}">Pricing</a>
                     <a href="{% url 'developer_docs' %}" class="block px-3 py-2 rounded-md text-base font-medium {% if request.resolver_match.url_name == 'developer_docs' %}bg-indigo-50 text-indigo-700{% else %}text-slate-700 hover:bg-slate-50 hover:text-slate-900{% endif %}">Developers</a>
+                    <a href="{% url 'delivery_lookup' %}" class="block px-3 py-2 rounded-md text-base font-medium {% if request.resolver_match.url_name == 'delivery_lookup' %}bg-indigo-50 text-indigo-700{% else %}text-slate-700 hover:bg-slate-50 hover:text-slate-900{% endif %}">Confirm a delivery</a>
                 </div>
                 <div class="pt-4 pb-3 border-t border-slate-200">
                     <div class="flex items-center px-5">
@@ -265,6 +273,12 @@
     <!-- Public Footer -->
     <footer class="bg-slate-100 border-t border-slate-200">
         <div class="container mx-auto py-8 px-4 sm:px-6 lg:px-8 text-center">
+            <div class="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm font-medium text-slate-600 mb-4">
+                <a href="{% url 'plan_list' %}" class="hover:text-indigo-600">Pricing</a>
+                <a href="{% url 'developer_docs' %}" class="hover:text-indigo-600">Developers</a>
+                <a href="{% url 'delivery_lookup' %}" class="hover:text-indigo-600">Confirm a delivery</a>
+                <a href="{% url 'merchant_application' %}" class="hover:text-indigo-600">Become a merchant</a>
+            </div>
             <p class="text-sm text-slate-500">
                 &copy; {% now "Y" %} AmatoPay. All rights reserved.
             </p>

@@ -9,12 +9,20 @@ managed through Django Unfold and have no `/api/v1/` routes.
 - `GET /api/v1/fees/quote/?amount=100000&currency=BIF` (KYC/KYB fee quote)
 - `GET /api/v1/checkout/alias-verifications/?payer_alias=%2B25779000000` (optional MOBILE alias/name lookup)
 - `GET /api/v1/checkout/sessions/{id}/`
-- `POST /api/v1/checkout/sessions/` (merchant API key; accepts `payer_alias`, verifies it and initiates RTP)
+- `POST /api/v1/checkout/sessions/` (merchant API key; accepts `payer_alias`, verifies it and initiates the collection)
 
-The merchant supplies only the payer's MOBILE alias when creating a session. AmatoPay verifies it and records the resolved payer name before creating the session, payment and RTP. Session expiry is fixed by AmatoPay at three hours. The hosted
+The merchant supplies only the payer's MOBILE alias when creating a session. AmatoPay verifies it and records the resolved payer name before creating the session, payment and collection. Session expiry is fixed by AmatoPay at three hours. The hosted
 checkout only shows the already-created payment request and polls its status.
-The six-digit release code is visible only to the payer in the RTP description
+The six-digit release code is visible only to the payer in the payment-request description
 and is never returned to the merchant API.
+
+**Instant settlement.** Merchants granted the `instant_settlement_enabled` capability
+may create a session with `"require_delivery_confirmation": false`. Those payments
+carry no secure code and no delivery-confirmation hold: on collection they auto-confirm
+(`delivery.confirmed`, method `instant_settlement`) and the payout to the merchant
+starts immediately. Use it for services rendered on payment (transport tickets, airtime,
+event tickets, digital goods). A `POST` with the flag from a merchant without the
+capability is rejected `400`.
 
 ## Payment lifecycle
 

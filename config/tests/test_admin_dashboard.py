@@ -21,6 +21,6 @@ class AdminDashboardTests(TestCase):
         self.assertContains(response, "Recent payments")
         self.assertContains(response, "Payment volume")
         self.assertContains(response, "Payment status")
-        self.assertContains(response, "RTP collection")
+        self.assertContains(response, "Collections")
         self.assertContains(response, "Compliance &amp; platform")
         self.assertNotContains(response, "All controls")

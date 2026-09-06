@@ -40,6 +40,14 @@ class WebhookDelivery(UUIDModel, TimeStampedModel):
     attempts = models.PositiveIntegerField(default=0)
     last_status_code = models.PositiveIntegerField(null=True, blank=True)
     last_error = models.TextField(blank=True)
+    last_response_body = models.TextField(
+        blank=True,
+        help_text="Body the merchant's endpoint returned on the most recent attempt (truncated).",
+    )
+    last_response_headers = models.JSONField(
+        default=dict, blank=True,
+        help_text="Response headers from the merchant's endpoint on the most recent attempt.",
+    )
     next_retry_at = models.DateTimeField(null=True, blank=True)
     delivered_at = models.DateTimeField(null=True, blank=True)
 
@@ -62,6 +70,7 @@ class WebhookAttempt(UUIDModel, TimeStampedModel):
     request_headers = models.JSONField(default=dict)
     request_body = models.JSONField(default=dict)
     response_status = models.PositiveIntegerField(null=True, blank=True)
+    response_headers = models.JSONField(default=dict, blank=True)
     response_body = models.TextField(blank=True)
     error = models.TextField(blank=True)
     duration_ms = models.PositiveIntegerField(default=0)

@@ -8,10 +8,11 @@ from rest_framework.test import APIClient
 
 from apps.checkout.models import PaymentSession
 from apps.fiduciary.models import FiduciaryAccount, FundHold
-from apps.gateway.models import RTPRequest
+from apps.gateway.models import GatewayRequest
 from apps.merchants.models import Merchant, MerchantApiKey, MerchantSettlementAccount
 from apps.payments.models import Payment
 from apps.deliveries.models import ProtectionClaim
+from apps.webhooks.models import WebhookEvent
 
 
 class SecureDeliveryConfirmationTests(TestCase):
@@ -60,10 +61,11 @@ class SecureDeliveryConfirmationTests(TestCase):
             status=FundHold.Status.DELIVERY_PENDING,
             release_eligible_at=timezone.now() + timedelta(days=4),
         )
-        RTPRequest.objects.create(
-            request_id="RTP-DELIVERY-TEST",
+        GatewayRequest.objects.create(
+            rail=GatewayRequest.Rail.COLLECTION,
+            request_id="COLL-DELIVERY-TEST",
             payment=self.payment,
-            provider_reference="RTP-DELIVERY-REF",
+            provider_reference="COLL-DELIVERY-REF",
             release_code_ciphertext="encrypted-test-code",
         )
         self.client = APIClient()
@@ -84,7 +86,7 @@ class SecureDeliveryConfirmationTests(TestCase):
         self.payment.refresh_from_db()
         self.assertIsNotNone(self.payment.release_code_confirmed_at)
         self.assertEqual(self.payment.release_code_hash, "")
-        self.assertEqual(self.payment.rtp.release_code_ciphertext, "")
+        self.assertEqual(self.payment.collection.release_code_ciphertext, "")
         self.assertEqual(self.payment.status, Payment.Status.RELEASE_PENDING)
         self.assertEqual(self.payment.delivery.status, "delivered")
         self.assertEqual(
@@ -174,6 +176,11 @@ class SecureDeliveryConfirmationTests(TestCase):
         self.payment.refresh_from_db()
         self.assertEqual(self.payment.status, Payment.Status.RELEASE_PENDING)
         payout.assert_called_once()
+        self.assertTrue(
+            WebhookEvent.objects.filter(
+                type="delivery.confirmed", object_id=self.payment.reference
+            ).exists()
+        )
 
     def test_customer_report_starts_investigation_and_freezes_funds(self):
         response = self.client.post(
@@ -198,6 +205,11 @@ class SecureDeliveryConfirmationTests(TestCase):
         self.assertEqual(claim.opened_by, "payer_public_portal:payer_secure_code")
         self.assertEqual(claim.reason, "not_received")
         self.assertEqual(claim.events.count(), 1)
+        self.assertTrue(
+            WebhookEvent.objects.filter(
+                type="payment.disputed", object_id=self.payment.reference
+            ).exists()
+        )
 
     def test_wrong_public_code_is_recorded_without_opening_claim(self):
         response = self.client.post(

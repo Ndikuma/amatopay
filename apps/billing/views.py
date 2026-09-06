@@ -1,12 +1,12 @@
 from decimal import Decimal
 
+from rest_framework import serializers
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework import serializers
 from drf_spectacular.utils import extend_schema, inline_serializer
 
 from apps.developers.authentication import MerchantApiKeyAuthentication
-from apps.developers.permissions import HasMerchantApiKey
+from apps.developers.permissions import IsActiveMerchant
 
 from .serializers import FeeQuoteInputSerializer
 from .services import resolve_transaction_fee
@@ -14,7 +14,7 @@ from .services import resolve_transaction_fee
 
 class MerchantFeeQuoteView(APIView):
     authentication_classes = [MerchantApiKeyAuthentication]
-    permission_classes = [HasMerchantApiKey]
+    permission_classes = [IsActiveMerchant]
 
     @extend_schema(
         summary="Preview the merchant fee for a payment",

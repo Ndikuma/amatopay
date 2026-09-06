@@ -5,10 +5,10 @@ from django.core.management.base import BaseCommand
 from django.db.models import Q
 from django.utils import timezone
 
-from apps.gateway.models import P2PRequest, RTPRequest
+from apps.gateway.models import GatewayRequest
 from apps.gateway.services import (
     recover_p2p_status,
-    recover_rtp_status,
+    recover_collection_status,
     start_merchant_payout,
 )
 from apps.settlements.models import Settlement
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    help = "Poll MobileCash transaction references for RTP and P2P status updates."
+    help = "Poll MobileCash transaction references for collection and payout status updates."
 
     def add_arguments(self, parser):
         parser.add_argument("--limit", type=int, default=100)
@@ -53,7 +53,8 @@ class Command(BaseCommand):
                 )
                 self.stderr.write(f"{settlement.reference}: {exc}")
         pending = (
-            RTPRequest.objects.select_related("payment")
+            GatewayRequest.objects.select_related("payment")
+            .filter(rail=GatewayRequest.Rail.COLLECTION)
             .filter(status__in=["pending", "awaiting_approval", "processing"])
             .filter(Q(next_poll_at__isnull=True) | Q(next_poll_at__lte=now))
             .exclude(provider_reference="")
@@ -61,22 +62,23 @@ class Command(BaseCommand):
         )
         checked = updated = failed = 0
         rate_limited = False
-        for rtp in pending:
+        for collection in pending:
             checked += 1
             try:
-                if recover_rtp_status(rtp):
+                if recover_collection_status(collection):
                     updated += 1
             except Exception as exc:
                 failed += 1
                 if getattr(exc, "status_code", None) == 429:
                     rate_limited = True
-                logger.exception("Could not reconcile RTP %s", rtp.request_id)
-                self.stderr.write(f"{rtp.request_id}: {exc}")
+                logger.exception("Could not reconcile collection %s", collection.request_id)
+                self.stderr.write(f"{collection.request_id}: {exc}")
                 if rate_limited:
                     self.stderr.write("Gateway rate limit reached; ending this poll cycle early.")
                     break
         pending_payouts = (
-            P2PRequest.objects.select_related("settlement", "settlement__payment")
+            GatewayRequest.objects.select_related("settlement", "settlement__payment")
+            .filter(rail=GatewayRequest.Rail.P2P)
             .filter(status__in=["pending", "processing", "awaiting_approval"])
             .filter(Q(next_poll_at__isnull=True) | Q(next_poll_at__lte=now))
             .exclude(provider_reference="")

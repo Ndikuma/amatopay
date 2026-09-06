@@ -168,18 +168,18 @@ class MobileCashGateway:
             "provider": result,
         }
 
-    def create_rtp(self, payload: dict[str, Any]) -> dict[str, Any]:
+    def create_collection(self, payload: dict[str, Any]) -> dict[str, Any]:
         if not self.creditor_alias:
             raise MobileCashGatewayError(
-                "rtp.create",
+                "collection.create",
                 0,
-                "The active gateway creditor_alias is required for RTP collection",
+                "The active gateway creditor_alias is required for collection",
             )
         amount = Decimal(str(payload.get("totalAmount") or payload["amount"]))
         result = self._request(
             "POST",
-            endpoints.RTP_CREATE,
-            "rtp.create",
+            endpoints.COLLECTION_CREATE,
+            "collection.create",
             json={
                 "creditorAlias": self.creditor_alias,
                 "debtorAlias": payload["payerAlias"],
@@ -191,7 +191,7 @@ class MobileCashGateway:
         reference = self._find(result, "trxRef", "trxref")
         if not reference:
             raise MobileCashGatewayError(
-                "rtp.create", 502, "Gateway response did not contain trxRef"
+                "collection.create", 502, "Gateway response did not contain trxRef"
             )
         status = self._find(result, "status") or "PENDING"
         return {

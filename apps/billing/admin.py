@@ -8,6 +8,7 @@ from apps.payments.models import TransactionFee
 
 from .models import (
     MerchantPlanAssignment,
+    PlanRequest,
     PricingPlan,
 )
 
@@ -97,6 +98,40 @@ class MerchantPlanAssignmentAdmin(ModelAdmin):
             "merchant_plan.updated" if change else "merchant_plan.assigned",
             previous,
         )
+
+
+@admin.register(PlanRequest)
+class PlanRequestAdmin(ModelAdmin):
+    list_display = (
+        "reference",
+        "merchant",
+        "plan",
+        "amount",
+        "currency",
+        "status",
+        "paid_at",
+        "created_at",
+    )
+    list_filter = ("status", "currency", "plan")
+    search_fields = (
+        "reference",
+        "merchant__display_name",
+        "merchant__merchant_code",
+        "payer_alias",
+        "provider_reference",
+    )
+    autocomplete_fields = ("merchant", "plan")
+    readonly_fields = (
+        "reference",
+        "provider_reference",
+        "paid_at",
+        "initiated_by",
+        "created_at",
+        "updated_at",
+    )
+
+    def has_add_permission(self, request):
+        return False
 
 
 @admin.register(TransactionFee)

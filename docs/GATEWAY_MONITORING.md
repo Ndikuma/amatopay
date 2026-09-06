@@ -1,6 +1,6 @@
 # Gateway transaction monitoring
 
-RTP collections and P2P payouts are monitored with the institution `trxRef` returned when the transaction is created. AmatoPay persists that value and calls `TRANSACTION_BY_REFERENCE` until the gateway reports a terminal status.
+Collections and P2P payouts are monitored with the institution `trxRef` returned when the transaction is created. AmatoPay persists that value and calls `TRANSACTION_BY_REFERENCE` until the gateway reports a terminal status.
 
 The dedicated worker runs:
 
@@ -12,7 +12,7 @@ It is already configured as the `gateway-worker` service in Docker Compose. Do n
 
 Monitoring behavior:
 
-- pending RTP and P2P records are selected only when `next_poll_at` is due;
+- pending collection and payout records are selected only when `next_poll_at` is due;
 - successful polls reset the failure counter and schedule the next normal poll;
 - timeouts, 404s and gateway failures use bounded exponential backoff;
 - HTTP 429 stops the current cycle early to avoid amplifying rate limiting;

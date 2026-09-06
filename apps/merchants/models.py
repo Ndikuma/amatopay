@@ -35,6 +35,12 @@ class MerchantApplication(UUIDModel, TimeStampedModel):
     registration_number = models.CharField(max_length=100, blank=True)
     tax_id = models.CharField(max_length=80, blank=True)
     industry = models.CharField(max_length=120)
+    mcc = models.CharField(
+        max_length=8,
+        blank=True,
+        verbose_name="Merchant category code",
+        help_text="4-digit MCC if you know it; AmatoPay assigns one otherwise.",
+    )
     website = models.URLField(blank=True)
     country = models.CharField(max_length=2, default="BI")
     city = models.CharField(max_length=100)
@@ -47,6 +53,11 @@ class MerchantApplication(UUIDModel, TimeStampedModel):
     expected_monthly_transactions = models.PositiveIntegerField()
     business_description = models.TextField()
     payment_use_case = models.TextField()
+    source_of_funds = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Where the money your business collects comes from (e.g. product sales, service fees).",
+    )
     settlement_alias_type = models.CharField(
         max_length=20,
         choices=SettlementAliasType.choices,
@@ -61,6 +72,36 @@ class MerchantApplication(UUIDModel, TimeStampedModel):
         max_length=180,
         blank=True,
         help_text="Name registered on the proposed BurundiPay account.",
+    )
+    statement_descriptor = models.CharField(
+        max_length=22,
+        blank=True,
+        help_text="Short name shown to payers on their statement (max 22 characters).",
+    )
+    # KYB documents supplied up front so review is the only remaining step.
+    registration_document = models.FileField(
+        upload_to="merchant_applications/%Y/%m/", blank=True,
+        verbose_name="Business registration certificate",
+    )
+    tax_document = models.FileField(
+        upload_to="merchant_applications/%Y/%m/", blank=True,
+        verbose_name="Tax / NIF certificate",
+    )
+    license_document = models.FileField(
+        upload_to="merchant_applications/%Y/%m/", blank=True,
+        verbose_name="Business licence (if your activity is regulated)",
+    )
+    address_document = models.FileField(
+        upload_to="merchant_applications/%Y/%m/", blank=True,
+        verbose_name="Proof of business address",
+    )
+    id_document = models.FileField(
+        upload_to="merchant_applications/%Y/%m/", blank=True,
+        verbose_name="Representative ID",
+    )
+    bank_document = models.FileField(
+        upload_to="merchant_applications/%Y/%m/", blank=True,
+        verbose_name="Settlement account proof",
     )
     referral_source = models.CharField(max_length=120, blank=True)
     status = models.CharField(
@@ -135,6 +176,15 @@ class Merchant(UUIDModel, TimeStampedModel):
     risk_rating = models.CharField(max_length=20, default="medium")
     default_currency = models.CharField(max_length=3, default="BIF")
     statement_descriptor = models.CharField(max_length=22, blank=True)
+    instant_settlement_enabled = models.BooleanField(
+        default=False,
+        help_text=(
+            "AmatoPay-granted capability. When enabled, this merchant may create "
+            "checkout sessions with require_delivery_confirmation=false — funds "
+            "auto-release to the merchant as soon as the payment is collected, "
+            "with no secure-code delivery gate. Grant only after a risk review."
+        ),
+    )
     metadata = models.JSONField(default=dict, blank=True)
     owner = models.OneToOneField(
         User,
@@ -192,19 +242,6 @@ class MerchantDocument(UUIDModel, TimeStampedModel):
     issued_at = models.DateField(null=True, blank=True)
     expires_at = models.DateField(null=True, blank=True)
     verified = models.BooleanField(default=False)
-
-
-class BeneficialOwner(UUIDModel, TimeStampedModel):
-    merchant = models.ForeignKey(
-        Merchant, on_delete=models.CASCADE, related_name="beneficial_owners"
-    )
-    full_name = models.CharField(max_length=180)
-    nationality = models.CharField(max_length=2, blank=True)
-    date_of_birth = models.DateField(null=True, blank=True)
-    id_number = models.CharField(max_length=120, blank=True)
-    ownership_percent = models.DecimalField(max_digits=5, decimal_places=2)
-    pep = models.BooleanField(default=False)
-    sanctions_match = models.BooleanField(default=False)
 
 
 class MerchantSettlementAccount(UUIDModel, TimeStampedModel):

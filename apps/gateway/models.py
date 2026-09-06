@@ -85,28 +85,62 @@ class AliasVerification(UUIDModel, TimeStampedModel):
     raw_response = models.JSONField(default=dict, blank=True)
 
 
-class RTPRequest(UUIDModel, TimeStampedModel):
+class GatewayRequest(UUIDModel, TimeStampedModel):
+    """A single MobileCash transaction on either payment rail.
+
+    ``rail=COLLECTION`` requests are owned by a ``payments.Payment`` or a
+    ``billing.PlanRequest``; ``rail=P2P`` payouts are owned by a
+    ``settlements.Settlement``. Replaces the former ``RTPRequest`` and
+    ``P2PRequest`` models.
+    """
+
+    class Rail(models.TextChoices):
+        COLLECTION = "COLLECTION", "Collection"
+        P2P = "P2P", "P2P payout"
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        PROCESSING = "processing", "Processing"
+        AWAITING_APPROVAL = "awaiting_approval", "Awaiting payer approval"
+        COMPLETED = "completed", "Completed"
+        REJECTED = "rejected", "Rejected"
+        FAILED = "failed", "Failed"
+        CANCELLED = "cancelled", "Cancelled"
+        EXPIRED = "expired", "Expired"
+
+    rail = models.CharField(max_length=12, choices=Rail.choices, db_index=True)
     request_id = models.CharField(max_length=100, unique=True)
+
+    # Collection owners
     payment = models.OneToOneField(
-        "payments.Payment", on_delete=models.PROTECT, related_name="rtp",
+        "payments.Payment", on_delete=models.PROTECT, related_name="collection",
+        null=True, blank=True,
+    )
+    plan_request = models.OneToOneField(
+        "billing.PlanRequest", on_delete=models.PROTECT,
+        related_name="collection", null=True, blank=True,
+    )
+    # P2P owner
+    settlement = models.OneToOneField(
+        "settlements.Settlement", on_delete=models.PROTECT, related_name="p2p",
         null=True, blank=True,
     )
 
-    plan_request = models.OneToOneField(
-        "billing.PlanRequest", on_delete=models.PROTECT,
-        related_name="rtp", null=True, blank=True,
-    )
     provider_reference = models.CharField(
         max_length=120,
         blank=True,
         db_index=True,
         help_text="Gateway trxRef used by TRANSACTION_BY_REFERENCE monitoring.",
     )
-    status = models.CharField(max_length=30, default="pending")
+    status = models.CharField(
+        max_length=30, choices=Status.choices, default=Status.PENDING
+    )
     last_callback_at = models.DateTimeField(null=True, blank=True)
     raw_request = models.JSONField(default=dict, blank=True)
     raw_response = models.JSONField(default=dict, blank=True)
-    release_code_ciphertext = models.TextField(blank=True, editable=False)
+    release_code_ciphertext = models.TextField(
+        blank=True, editable=False, help_text="Collection rail only."
+    )
     last_polled_at = models.DateTimeField(null=True, blank=True)
     next_poll_at = models.DateTimeField(null=True, blank=True, db_index=True)
     poll_attempts = models.PositiveIntegerField(default=0)
@@ -114,68 +148,33 @@ class RTPRequest(UUIDModel, TimeStampedModel):
     last_poll_error = models.TextField(blank=True)
 
     class Meta:
+        indexes = [
+            models.Index(
+                fields=["rail", "status"], name="idx_gwreq_rail_status"
+            )
+        ]
         constraints = [
             models.UniqueConstraint(
                 fields=["provider_reference"],
                 condition=~models.Q(provider_reference=""),
-                name="uq_rtp_gateway_trx_ref",
+                name="uq_gateway_request_trx_ref",
             )
         ]
+
+    def __str__(self):
+        return f"{self.rail} {self.request_id} ({self.status})"
 
     @property
     def trx_ref(self):
         return self.provider_reference
 
 
-class RTPCallback(UUIDModel, TimeStampedModel):
+class GatewayCallback(UUIDModel, TimeStampedModel):
+    """Institution status callback for a ``GatewayRequest`` (collection or payout)."""
+
     event_id = models.CharField(max_length=120, unique=True)
-    rtp = models.ForeignKey(
-        RTPRequest, on_delete=models.PROTECT, related_name="callbacks"
-    )
-    status = models.CharField(max_length=30)
-    reason_code = models.CharField(max_length=80, blank=True)
-    payload = models.JSONField(default=dict, blank=True)
-
-
-class P2PRequest(UUIDModel, TimeStampedModel):
-    request_id = models.CharField(max_length=100, unique=True)
-    settlement = models.OneToOneField(
-        "settlements.Settlement", on_delete=models.PROTECT, related_name="p2p"
-    )
-    provider_reference = models.CharField(
-        max_length=120,
-        blank=True,
-        db_index=True,
-        help_text="Gateway trxRef used by TRANSACTION_BY_REFERENCE monitoring.",
-    )
-    status = models.CharField(max_length=30, default="processing")
-    last_callback_at = models.DateTimeField(null=True, blank=True)
-    raw_request = models.JSONField(default=dict, blank=True)
-    raw_response = models.JSONField(default=dict, blank=True)
-    last_polled_at = models.DateTimeField(null=True, blank=True)
-    next_poll_at = models.DateTimeField(null=True, blank=True, db_index=True)
-    poll_attempts = models.PositiveIntegerField(default=0)
-    consecutive_poll_failures = models.PositiveSmallIntegerField(default=0)
-    last_poll_error = models.TextField(blank=True)
-
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(
-                fields=["provider_reference"],
-                condition=~models.Q(provider_reference=""),
-                name="uq_p2p_gateway_trx_ref",
-            )
-        ]
-
-    @property
-    def trx_ref(self):
-        return self.provider_reference
-
-
-class P2PCallback(UUIDModel, TimeStampedModel):
-    event_id = models.CharField(max_length=120, unique=True)
-    p2p = models.ForeignKey(
-        P2PRequest, on_delete=models.PROTECT, related_name="callbacks"
+    request = models.ForeignKey(
+        GatewayRequest, on_delete=models.PROTECT, related_name="callbacks"
     )
     status = models.CharField(max_length=30)
     reason_code = models.CharField(max_length=80, blank=True)
@@ -184,10 +183,10 @@ class P2PCallback(UUIDModel, TimeStampedModel):
 
 class GatewayTransactionPoll(UUIDModel, TimeStampedModel):
     class Rail(models.TextChoices):
-        RTP = "RTP", "RTP collection"
+        COLLECTION = "COLLECTION", "Collection"
         P2P = "P2P", "P2P payout"
 
-    rail = models.CharField(max_length=3, choices=Rail.choices, db_index=True)
+    rail = models.CharField(max_length=12, choices=Rail.choices, db_index=True)
     request_id = models.CharField(max_length=100, db_index=True)
     trx_ref = models.CharField(max_length=120, db_index=True)
     status = models.CharField(max_length=30, blank=True)

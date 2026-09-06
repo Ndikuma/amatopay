@@ -1,3 +1,4 @@
+from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
 from django.db import transaction
@@ -6,29 +7,49 @@ from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.contrib import messages
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_http_methods
+from django.views.generic import ListView
 from django.utils import timezone
 from rest_framework.exceptions import APIException
 
-from apps.deliveries.services import confirm_delivery_with_code
+from apps.deliveries.services import (
+    confirm_delivery_with_code,
+    open_customer_delivery_claim,
+)
 from apps.payments.models import Payment
 from apps.settlements.models import Settlement
 from apps.webhooks.models import WebhookEvent
 from apps.refunds.models import Refund
 from apps.fiduciary.models import FundHold
-from apps.merchants.models import Merchant, MerchantActivity, MerchantApiKey
-from apps.merchants.models import MerchantWebhookEndpoint
+from apps.merchants.models import (
+    Merchant,
+    MerchantActivity,
+    MerchantApiKey,
+    MerchantApplication,
+    MerchantDocument,
+    MerchantKYB,
+    MerchantSettlementAccount,
+    MerchantWebhookEndpoint,
+)
+from apps.merchants.services import activation_status as merchant_activation_status
+from apps.billing.models import PlanRequest, PricingPlan
 from apps.billing.services import (
     active_plan_assignment,
     initiate_plan_request_payment,
     resolve_transaction_fee,
 )
 from apps.webhooks.models import WebhookDelivery
+from apps.webhooks.events import WEBHOOK_EVENT_TYPES as WEBHOOK_EVENTS
 from apps.webhooks.security import validate_webhook_url
 from apps.webhooks.services import emit_event
 import secrets
 
-from .forms import DeliveryCodeConfirmationForm, MerchantMissingProfileForm
+from .forms import (
+    DeliveryCodeConfirmationForm,
+    MerchantApplicationForm,
+    MerchantMissingProfileForm,
+    PlanRequestForm,
+)
 
 
 def _merchant(request):
@@ -212,7 +233,7 @@ def plan_select(request):
 @require_POST
 def billing_request_plan(request):
     from apps.billing.models import PricingPlan, PlanRequest
-    from apps.gateway.rtp import PaymentGatewayError
+    from apps.gateway.collection import PaymentGatewayError
 
     merchant = _merchant(request)
     if not merchant:
@@ -313,7 +334,7 @@ def payment_detail(request, reference):
         Payment.Status.DISPUTED,
     }:
         delivery_decision_url = request.build_absolute_uri(
-            reverse("customer_delivery", args=[payment.reference])
+            reverse("delivery_decision", args=[payment.reference])
         )
     form = DeliveryCodeConfirmationForm(
         expected_reference=payment.reference,
@@ -477,6 +498,11 @@ def developers(request):
         "events": WebhookEvent.objects.filter(merchant=merchant).order_by(
             "-created_at"
         )[:20],
+        "deliveries": (
+            WebhookDelivery.objects.filter(event__merchant=merchant)
+            .select_related("event", "endpoint")
+            .order_by("-created_at")[:25]
+        ),
         "webhook_event_choices": sorted(WEBHOOK_EVENTS),
         "new_webhook_secret": request.session.pop("new_webhook_secret", None),
         "new_webhook_endpoint_id": request.session.pop("new_webhook_endpoint_id", None),
@@ -505,13 +531,6 @@ def _record_webhook_activity(request, merchant, action, description, endpoint):
         ip_address=request.META.get("HTTP_X_REAL_IP") or request.META.get("REMOTE_ADDR") or None,
         metadata={"endpoint_id": str(endpoint.id), "url": endpoint.url},
     )
-
-
-WEBHOOK_EVENTS = {
-    "payment.paid",
-    "payment.failed",
-    "settlement.completed",
-}
 
 
 @login_required
@@ -691,23 +710,19 @@ def profile(request):
     except ObjectDoesNotExist:
         kyb = None
     documents = merchant.kyb_documents.order_by("document_type", "-created_at")
-    owners = merchant.beneficial_owners.order_by("-ownership_percent", "full_name")
     accounts = merchant.settlement_accounts.order_by(
         "-is_primary", "-is_active", "-created_at"
     )
+    status = merchant_activation_status(merchant)
     checklist = {
-        "business": bool(
-            merchant.registration_number and merchant.tax_id and merchant.legal_name
-        ),
-        "contact": bool(merchant.email and merchant.phone and merchant.address),
-        "kyb": bool(kyb and kyb.verified and kyb.decision == "approved"),
-        "documents": documents.filter(verified=True).exists(),
-        "owners": owners.exists(),
-        "settlement": accounts.filter(
-            verification_status="verified", is_primary=True, is_active=True
-        ).exists(),
+        "business": status["checks"]["business_identity"],
+        "contact": status["checks"]["contact_details"],
+        "source_of_funds": status["checks"]["source_of_funds"],
+        "documents_submitted": status["checks"]["kyb_documents_submitted"],
+        "documents_verified": status["checks"]["kyb_documents_verified"],
+        "kyb": status["checks"]["kyb_approved"],
+        "settlement": status["checks"]["settlement_account_verified"],
     }
-    readiness = round(sum(checklist.values()) / len(checklist) * 100)
     return render(
         request,
         "portal/profile.html",
@@ -715,10 +730,311 @@ def profile(request):
             "merchant": merchant,
             "kyb": kyb,
             "documents": documents,
-            "owners": owners,
             "settlement_accounts": accounts,
             "checklist": checklist,
-            "readiness": readiness,
+            "readiness": status["readiness"],
+            "activation_ready": status["can_operate"],
             "missing_profile_form": missing_profile_form,
         },
     )
+
+
+# ---------------------------------------------------------------------------
+# Public (unauthenticated) marketing + hosted-checkout pages
+# ---------------------------------------------------------------------------
+
+
+def pay(request, session_id):
+    from apps.checkout.models import PaymentSession
+
+    session = get_object_or_404(
+        PaymentSession.objects.select_related("merchant"), session_id=session_id
+    )
+    return render(
+        request,
+        "checkout/pay.html",
+        {"session": session, "merchant": session.merchant},
+    )
+
+
+def home(request):
+    return render(request, "portal/home.html")
+
+
+def docs(request):
+    return render(request, "portal/docs.html")
+
+
+class PlanListView(ListView):
+    model = PricingPlan
+    template_name = "billing/plan_list.html"
+    context_object_name = "plans"
+
+    def get_queryset(self):
+        return PricingPlan.objects.filter(active=True).order_by("monthly_price")
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["compare_features"] = [
+            "Hosted checkout",
+            "Signed webhooks",
+            "Payment links",
+            "API access",
+            "Priority support",
+            "KYB fast-track",
+            "Dedicated account manager",
+            "Custom settlement schedule",
+            "SLA guarantee",
+            "Compliance reporting",
+        ]
+        user = self.request.user
+        ctx["user_authenticated"] = user.is_authenticated
+        ctx["user_has_merchant"] = (
+            user.is_authenticated
+            and hasattr(user, "merchant_account")
+            and user.merchant_account is not None
+        )
+        return ctx
+
+
+@login_required
+def request_plan_view(request, plan_id):
+    plan = get_object_or_404(PricingPlan, id=plan_id)
+    merchant = request.user.merchant_account
+
+    if not merchant:
+        messages.error(request, "You must have a merchant account to request a plan.")
+        return redirect("plan_list")
+
+    if request.method == "POST":
+        form = PlanRequestForm(request.POST)
+        if form.is_valid():
+            plan_request = PlanRequest.objects.create(
+                merchant=merchant,
+                plan=plan,
+                amount=plan.monthly_price,
+                currency=plan.currency,
+                payer_alias=form.cleaned_data["payer_alias"],
+                note=form.cleaned_data["note"],
+                initiated_by=request.user,
+            )
+            try:
+                initiate_plan_request_payment(plan_request)
+                return redirect("plan_list")
+            except Exception as exc:
+                messages.error(request, f"Could not initiate payment. Error: {exc}")
+    else:
+        form = PlanRequestForm()
+
+    return render(request, "billing/request_plan.html", {"plan": plan, "form": form})
+
+
+def _source_ip(request):
+    # X-Real-IP is set by AmatoPay's trusted reverse proxy; never trust the first XFF hop.
+    return request.META.get("HTTP_X_REAL_IP") or request.META.get("REMOTE_ADDR")
+
+
+APPLICATION_DOCUMENTS = (
+    # (application field, MerchantDocument.Type)
+    ("registration_document", MerchantDocument.Type.REGISTRATION),
+    ("tax_document", MerchantDocument.Type.TAX),
+    ("license_document", MerchantDocument.Type.LICENSE),
+    ("address_document", MerchantDocument.Type.ADDRESS),
+    ("id_document", MerchantDocument.Type.ID),
+    ("bank_document", MerchantDocument.Type.BANK),
+)
+
+
+@require_http_methods(["GET", "POST"])
+def merchant_apply(request):
+    form = MerchantApplicationForm(request.POST or None, request.FILES or None)
+    if request.method == "POST" and form.is_valid():
+        with transaction.atomic():
+            email = form.cleaned_data["email"]
+            contact_parts = form.cleaned_data["contact_name"].split(" ", 1)
+            user = get_user_model().objects.create_user(
+                username=email,
+                email=email,
+                password=form.cleaned_data["password"],
+                first_name=contact_parts[0],
+                last_name=contact_parts[1] if len(contact_parts) > 1 else "",
+            )
+            application = form.save(commit=False)
+            application.applicant = user
+            application.settlement_alias_type = (
+                MerchantApplication.SettlementAliasType.MOBILE
+            )
+            application.source_ip = _source_ip(request)
+            application.user_agent = request.META.get("HTTP_USER_AGENT", "")[:255]
+            application.consented_at = timezone.now()
+            application.save()
+
+            merchant = Merchant.objects.create(
+                owner=user,
+                merchant_code=f"AMP-{application.id.hex[:12].upper()}",
+                legal_name=application.legal_name,
+                display_name=application.trading_name or application.legal_name,
+                legal_form=application.legal_form,
+                registration_number=application.registration_number,
+                tax_id=application.tax_id,
+                email=application.email,
+                phone=application.phone,
+                country=application.country,
+                city=application.city,
+                address=application.address,
+                website=application.website,
+                mcc=application.mcc,
+                statement_descriptor=application.statement_descriptor,
+                status=Merchant.Status.PENDING_KYB,
+                metadata={"application_reference": application.reference},
+            )
+            MerchantKYB.objects.create(
+                merchant=merchant,
+                source_of_funds=application.source_of_funds,
+                expected_monthly_volume=application.expected_monthly_volume,
+                expected_monthly_transactions=application.expected_monthly_transactions,
+            )
+            MerchantSettlementAccount.objects.create(
+                merchant=merchant,
+                alias_type=application.settlement_alias_type,
+                alias_value=application.settlement_alias,
+                account_name=application.settlement_account_name,
+                currency=merchant.default_currency,
+                is_primary=True,
+            )
+            for field_name, doc_type in APPLICATION_DOCUMENTS:
+                uploaded = getattr(application, field_name, None)
+                if uploaded:
+                    MerchantDocument.objects.create(
+                        merchant=merchant,
+                        document_type=doc_type,
+                        file=uploaded,
+                        verified=False,
+                    )
+        request.session["merchant_application_reference"] = application.reference
+        return redirect("merchant_application_received")
+    return render(request, "merchants/apply.html", {"form": form})
+
+
+def merchant_application_received(request):
+    reference = request.session.pop("merchant_application_reference", None)
+    if not reference:
+        return redirect("merchant_application")
+    return render(
+        request, "merchants/application_received.html", {"reference": reference}
+    )
+
+
+# ---------------------------------------------------------------------------
+# Public customer delivery-decision portal  (/deliveries/)
+# ---------------------------------------------------------------------------
+
+DELIVERY_REPORT_REASONS = [
+    ("not_received", "I never received the order or service"),
+    ("incomplete", "The order or service was incomplete"),
+    ("damaged", "What I received was damaged or not as described"),
+    ("other", "Something else"),
+]
+
+
+def _eligible_delivery_payment(reference):
+    return (
+        Payment.objects.filter(
+            reference=(reference or "").strip().upper(),
+            status=Payment.Status.DELIVERY_PENDING,
+        )
+        .select_related("merchant", "fund_hold", "session")
+        .first()
+    )
+
+
+def _delivery_unavailable_reason(payment):
+    labels = {
+        Payment.Status.CANCELLED: "This payment is cancelled.",
+        Payment.Status.EXPIRED: "This payment has expired.",
+        Payment.Status.FAILED: "This payment did not complete.",
+        Payment.Status.REJECTED: "This payment was rejected.",
+        Payment.Status.REFUNDED: "This payment was refunded.",
+        Payment.Status.DISPUTED: "An investigation is already open for this payment.",
+        Payment.Status.RELEASE_PENDING: "Delivery is already confirmed for this payment.",
+        Payment.Status.SETTLEMENT_PROCESSING: "This payment is already being settled.",
+        Payment.Status.SETTLED: "This payment is already settled.",
+    }
+    return labels.get(
+        payment.status,
+        "This payment is not currently waiting for a delivery decision.",
+    )
+
+
+def delivery_lookup(request):
+    error = None
+    if request.method == "POST":
+        payment = _eligible_delivery_payment(request.POST.get("payment_reference"))
+        if payment:
+            return redirect("delivery_decision", reference=payment.reference)
+        error = (
+            "We could not find an eligible protected payment for that reference. "
+            "Check the reference on your AmatoPay SMS and try again."
+        )
+    return render(request, "deliveries/lookup.html", {"error": error})
+
+
+def delivery_decision(request, reference):
+    payment = get_object_or_404(
+        Payment.objects.select_related("merchant", "fund_hold", "session"),
+        reference=(reference or "").strip().upper(),
+    )
+
+    if payment.status != Payment.Status.DELIVERY_PENDING:
+        return render(
+            request,
+            "deliveries/unavailable.html",
+            {"payment": payment, "reason": _delivery_unavailable_reason(payment)},
+        )
+
+    hold = getattr(payment, "fund_hold", None)
+    merchant_ready = payment.merchant.settlement_accounts.filter(
+        alias_type="MOBILE",
+        verification_status="verified",
+        is_primary=True,
+        is_active=True,
+        currency=payment.currency,
+    ).exists()
+    context = {
+        "payment": payment,
+        "merchant": payment.merchant,
+        "deadline": getattr(hold, "release_eligible_at", None),
+        "reasons": DELIVERY_REPORT_REASONS,
+        "merchant_ready": merchant_ready,
+        "code_locked": bool(payment.release_code_locked_at),
+    }
+
+    if request.method == "POST":
+        decision = request.POST.get("decision")
+        secure_code = (request.POST.get("secure_code") or "").strip()
+        try:
+            if decision == "confirm":
+                confirm_delivery_with_code(payment, secure_code)
+                return render(
+                    request, "deliveries/confirmed.html", {"payment": payment}
+                )
+            if decision == "report":
+                open_customer_delivery_claim(
+                    payment,
+                    secure_code,
+                    reason=request.POST.get("reason") or "other",
+                    description=(request.POST.get("description") or "").strip(),
+                )
+                return render(
+                    request, "deliveries/reported.html", {"payment": payment}
+                )
+            context["error"] = "Choose whether you received the order."
+        except APIException as exc:
+            payment.refresh_from_db()
+            detail = getattr(exc, "detail", None)
+            context["error"] = str(detail if detail else exc)
+        context["submitted_decision"] = decision
+        context["description"] = request.POST.get("description", "")
+        context["selected_reason"] = request.POST.get("reason", "")
+
+    return render(request, "deliveries/decision.html", context)

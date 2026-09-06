@@ -1,14 +1,225 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Become an AmatoPay Merchant{% endblock %}
+{% block title %}Become an AmatoPay merchant{% endblock %}
 
 {% block extra_css %}<link rel="stylesheet" href="{% static 'portal/css/merchant-application.css' %}">{% endblock %}
 
 {% block public_content %}
-<div class="application-layout"> {# Changed from <main> to <div> as base.html provides the <main> #}
-    <aside><p class="eyebrow">MERCHANT ONBOARDING</p><h1>Let’s build better payments together.</h1><p>Tell us about your business and create your merchant owner account.</p><ol><li><b>1</b><span><strong>Submit your profile</strong><small>About 5–8 minutes</small></span></li><li><b>2</b><span><strong>AmatoPay reviews it</strong><small>We may request supporting KYB documents</small></span></li><li><b>3</b><span><strong>Complete verification</strong><small>Sign in to follow your onboarding readiness</small></span></li></ol><div class="safe"><b>Secure by design</b><span>Create only an AmatoPay password here. Never submit your banking password, PIN, OTP or payment release code.</span></div></aside>
-<section><div class="form-head"><span>Merchant application</span><h2>Tell us about your business</h2><p>Fields marked with * are required. Your proposed BurundiPay settlement alias will be verified before activation.</p></div>
-{% if form.non_field_errors %}<div class="error-banner">{{ form.non_field_errors }}</div>{% endif %}
-<form method="post" novalidate>{% csrf_token %}{{ form.company_website }}<fieldset><legend>Business identity</legend><div class="grid">{% for field in form %}{% if field.name != 'company_website' and field.name != 'consent' %}<div class="field {% if field.name == 'business_description' or field.name == 'payment_use_case' or field.name == 'address' %}wide{% endif %}"><label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} *{% endif %}</label>{{ field }}{% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}{% for error in field.errors %}<em>{{ error }}</em>{% endfor %}</div>{% endif %}{% endfor %}</div></fieldset><label class="consent">{{ form.consent }}<span>{{ form.consent.label }}{% for error in form.consent.errors %}<em>{{ error }}</em>{% endfor %}</span></label><button type="submit">Submit application <span>→</span></button><p class="privacy">Your information is used only for merchant onboarding, compliance review and contacting your business.</p></form></section></main>
+<div class="apply-page" id="apply-page">
+    <header class="apply-intro">
+        <p class="apply-kicker">Merchant onboarding</p>
+        <h1>Apply to accept payments with AmatoPay</h1>
+        <p class="apply-lede">
+            Tell us about your business and create your dashboard account. AmatoPay reviews
+            your application, verifies your settlement number, and activates you — usually
+            without any follow-up.
+        </p>
+    </header>
+
+    <ol class="apply-progress" aria-hidden="true">
+        <li data-step-dot="0"><span>1</span><b>Business</b></li>
+        <li data-step-dot="1"><span>2</span><b>Registration</b></li>
+        <li data-step-dot="2"><span>3</span><b>Contact</b></li>
+        <li data-step-dot="3"><span>4</span><b>Settlement</b></li>
+        <li data-step-dot="4"><span>5</span><b>Documents</b></li>
+        <li data-step-dot="5"><span>6</span><b>Account</b></li>
+    </ol>
+
+    {% if form.non_field_errors %}
+    <div class="apply-banner">{% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}</div>
+    {% endif %}
+    <div class="apply-banner apply-banner-error" id="apply-step-error" hidden>
+        Please complete the highlighted fields before continuing.
+    </div>
+
+    <form method="post" enctype="multipart/form-data" class="apply-form" id="apply-form" novalidate>
+        {% csrf_token %}
+        {{ form.company_website }}
+
+        <fieldset class="apply-step" data-step>
+            <legend><span class="apply-num">1</span> Business identity</legend>
+            {% include "merchants/_field.html" with field=form.legal_name %}
+            {% include "merchants/_field.html" with field=form.trading_name %}
+            <div class="apply-row">
+                {% include "merchants/_field.html" with field=form.legal_form %}
+                {% include "merchants/_field.html" with field=form.industry %}
+            </div>
+            <div class="apply-row">
+                {% include "merchants/_field.html" with field=form.mcc %}
+                {% include "merchants/_field.html" with field=form.website %}
+            </div>
+            {% include "merchants/_field.html" with field=form.business_description %}
+            {% include "merchants/_field.html" with field=form.payment_use_case %}
+            {% include "merchants/_field.html" with field=form.source_of_funds %}
+        </fieldset>
+
+        <fieldset class="apply-step" data-step>
+            <legend><span class="apply-num">2</span> Registration &amp; address</legend>
+            <div class="apply-row">
+                {% include "merchants/_field.html" with field=form.registration_number %}
+                {% include "merchants/_field.html" with field=form.tax_id %}
+            </div>
+            <div class="apply-row">
+                {% include "merchants/_field.html" with field=form.country %}
+                {% include "merchants/_field.html" with field=form.city %}
+            </div>
+            {% include "merchants/_field.html" with field=form.address %}
+        </fieldset>
+
+        <fieldset class="apply-step" data-step>
+            <legend><span class="apply-num">3</span> Contact &amp; expected activity</legend>
+            <div class="apply-row">
+                {% include "merchants/_field.html" with field=form.contact_name %}
+                {% include "merchants/_field.html" with field=form.contact_role %}
+            </div>
+            <div class="apply-row">
+                {% include "merchants/_field.html" with field=form.email %}
+                {% include "merchants/_field.html" with field=form.phone %}
+            </div>
+            <div class="apply-row">
+                {% include "merchants/_field.html" with field=form.expected_monthly_volume %}
+                {% include "merchants/_field.html" with field=form.expected_monthly_transactions %}
+            </div>
+            {% include "merchants/_field.html" with field=form.referral_source %}
+        </fieldset>
+
+        <fieldset class="apply-step" data-step>
+            <legend><span class="apply-num">4</span> Settlement</legend>
+            {% include "merchants/_field.html" with field=form.settlement_alias %}
+            {% include "merchants/_field.html" with field=form.settlement_account_name %}
+            {% include "merchants/_field.html" with field=form.statement_descriptor %}
+        </fieldset>
+
+        <fieldset class="apply-step" data-step>
+            <legend><span class="apply-num">5</span> KYB documents</legend>
+            <p class="apply-hint">
+                PDF or image, 8&nbsp;MB max. Only the registration certificate and a
+                representative ID are needed to start review — you can add the rest during onboarding.
+            </p>
+            {% include "merchants/_field.html" with field=form.registration_document %}
+            {% include "merchants/_field.html" with field=form.id_document %}
+            {% include "merchants/_field.html" with field=form.tax_document %}
+            {% include "merchants/_field.html" with field=form.address_document %}
+            {% include "merchants/_field.html" with field=form.bank_document %}
+            {% include "merchants/_field.html" with field=form.license_document %}
+        </fieldset>
+
+        <fieldset class="apply-step" data-step>
+            <legend><span class="apply-num">6</span> Dashboard account</legend>
+            <p class="apply-safe">
+                🔒 Create only an AmatoPay dashboard password here — never your banking password,
+                PIN, OTP or a payment release code.
+            </p>
+            <div class="apply-row">
+                {% include "merchants/_field.html" with field=form.password %}
+                {% include "merchants/_field.html" with field=form.password_confirmation %}
+            </div>
+            <label class="apply-consent{% if form.consent.errors %} has-error{% endif %}">
+                {{ form.consent }}
+                <span>{{ form.consent.label }}{% for error in form.consent.errors %}<em>{{ error }}</em>{% endfor %}</span>
+            </label>
+        </fieldset>
+
+        <div class="apply-nav">
+            <button type="button" class="apply-back" id="apply-back" hidden>← Back</button>
+            <span class="apply-count" id="apply-count" hidden>Step 1 of 6</span>
+            <button type="button" class="apply-next" id="apply-next" hidden>Continue →</button>
+            <button type="submit" class="apply-submit" id="apply-submit">Submit application</button>
+        </div>
+        <p class="apply-privacy">Used only for merchant onboarding, compliance review and contacting your business.</p>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var page = document.getElementById('apply-page');
+    var form = document.getElementById('apply-form');
+    var steps = Array.prototype.slice.call(form.querySelectorAll('[data-step]'));
+    var dots = Array.prototype.slice.call(document.querySelectorAll('[data-step-dot]'));
+    var backBtn = document.getElementById('apply-back');
+    var nextBtn = document.getElementById('apply-next');
+    var submitBtn = document.getElementById('apply-submit');
+    var counter = document.getElementById('apply-count');
+    var stepError = document.getElementById('apply-step-error');
+    if (!steps.length) return;
+
+    page.classList.add('js-steps');
+    var current = 0;
+
+    function stepHasError(step) {
+        return !!step.querySelector('.field.has-error, .apply-consent.has-error');
+    }
+
+    function validateStep(step) {
+        var ok = true;
+        var controls = step.querySelectorAll('input, select, textarea');
+        Array.prototype.forEach.call(controls, function (el) {
+            if (el.type === 'hidden') return;
+            if (!el.checkValidity()) {
+                ok = false;
+                var wrap = el.closest('.field, .apply-consent');
+                if (wrap) wrap.classList.add('has-error');
+            }
+        });
+        if (!ok) {
+            var first = step.querySelector(':invalid');
+            if (first) first.focus();
+        }
+        return ok;
+    }
+
+    function show(index) {
+        current = Math.max(0, Math.min(index, steps.length - 1));
+        steps.forEach(function (step, i) { step.hidden = i !== current; });
+        dots.forEach(function (dot, i) {
+            dot.classList.toggle('is-active', i === current);
+            dot.classList.toggle('is-done', i < current);
+        });
+        backBtn.hidden = current === 0;
+        var last = current === steps.length - 1;
+        nextBtn.hidden = last;
+        submitBtn.hidden = !last;
+        counter.hidden = false;
+        counter.textContent = 'Step ' + (current + 1) + ' of ' + steps.length;
+        stepError.hidden = true;
+        try { window.scrollTo({ top: page.offsetTop - 20, behavior: 'smooth' }); } catch (e) {}
+    }
+
+    nextBtn.addEventListener('click', function () {
+        if (validateStep(steps[current])) {
+            show(current + 1);
+        } else {
+            stepError.hidden = false;
+        }
+    });
+    backBtn.addEventListener('click', function () { show(current - 1); });
+
+    // Clear a field's error state as the visitor fixes it.
+    form.addEventListener('input', function (e) {
+        var wrap = e.target.closest('.field, .apply-consent');
+        if (wrap && e.target.checkValidity()) wrap.classList.remove('has-error');
+    });
+
+    form.addEventListener('submit', function (e) {
+        for (var i = 0; i < steps.length; i++) {
+            if (!validateStep(steps[i])) {
+                e.preventDefault();
+                show(i);
+                stepError.hidden = false;
+                return;
+            }
+        }
+    });
+
+    // Start on the first step that came back with a server-side error, if any.
+    var firstErrored = steps.findIndex ? steps.findIndex(stepHasError) : -1;
+    if (firstErrored === -1) {
+        for (var j = 0; j < steps.length; j++) { if (stepHasError(steps[j])) { firstErrored = j; break; } }
+    }
+    show(firstErrored > 0 ? firstErrored : 0);
+});
+</script>
 {% endblock %}

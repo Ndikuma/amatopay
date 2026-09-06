@@ -1,60 +1,143 @@
-{% extends "base.html" %}
-
-{% block page_title %}Billing & Plan{% endblock %}
-
+{% extends 'base.html' %}
+{% block title %}Billing · AmatoPay{% endblock %}
+{% block page_title %}Billing{% endblock %}
 {% block content %}
-<div id="main-content" tabindex="-1" class="p-4 sm:p-6 lg:p-8"> {# Changed from <main> to <div> as base.html provides the <main> #}
-<div class="space-y-8">
-    <div class="bg-white shadow-sm ring-1 ring-slate-900/5 rounded-xl">
-        <div class="p-6">
-            <h2 class="text-lg font-semibold leading-6 text-slate-900">Current Plan</h2>
-            <div class="mt-4">
-                {% if pricing.mode == 'plan' %}
-                    <div class="flex items-baseline gap-x-4">
-                        <h3 class="text-2xl font-bold tracking-tight text-slate-900">{{ pricing.name }}</h3>
-                        <span class="text-sm font-semibold leading-6 text-slate-600">{{ pricing.price|floatformat:2 }} {{ pricing.currency }}/month</span>
-                    </div>
-                    <p class="mt-2 text-sm text-slate-500">{{ pricing.description }}</p>
-
-                    <div class="mt-6">
-                        <p class="text-sm font-medium text-slate-600">Monthly transaction usage</p>
-                        <div class="mt-2 flex items-center gap-x-4">
-                            <div class="w-full bg-slate-200 rounded-full h-2.5">
-                                <div class="bg-indigo-600 h-2.5 rounded-full" style="width: {{ pricing.usage_percent }}%"></div>
-                            </div>
-                            <span class="text-sm font-semibold text-slate-900">{{ pricing.usage_percent }}%</span>
-                        </div>
-                        <p class="mt-1 text-xs text-slate-500">
-                            {{ pricing.used }} of {{ pricing.limit|default:"unlimited" }} transactions used.
-                        </p>
-                    </div>
-                {% else %}
-                    <div class="flex items-baseline gap-x-4">
-                        <h3 class="text-2xl font-bold tracking-tight text-slate-900">Pay As You Go</h3>
-                        {% if pricing.rate is not None %}
-                        <span class="text-sm font-semibold leading-6 text-slate-600">{{ pricing.rate }}% per transaction</span>
-                        {% endif %}
-                    </div>
-                    <p class="mt-2 text-sm text-slate-500">You are currently on a pay-as-you-go plan. You are charged a percentage fee for each successful transaction.</p>
-                {% endif %}
-            </div>
+<main id="main-content" tabindex="-1" class="p-4 sm:p-6 lg:p-8">
+    {% if messages %}
+    <div class="portal-messages space-y-3 mb-6">
+        {% for message in messages %}
+        <div class="portal-message portal-message-{{ message.tags|default:'info' }} flex items-center justify-between p-4 rounded-lg shadow-sm">
+            <span class="flex items-center gap-2">{{ message }}</span>
+            <button class="text-slate-400 hover:text-slate-600" type="button" onclick="this.parentElement.remove()" aria-label="Dismiss">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
         </div>
-        <div class="p-6 bg-slate-50 rounded-b-xl border-t border-slate-900/5">
-            <a href="#" class="text-sm font-semibold leading-6 text-indigo-600 hover:text-indigo-500">
-                Change plan <span aria-hidden="true">&rarr;</span>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <header class="page-header">
+        <div>
+            <p class="eyebrow">Account</p>
+            <h1>Billing &amp; plan</h1>
+            <p class="page-subtitle">Your current pricing, monthly usage and invoice history.</p>
+        </div>
+        <div class="header-actions">
+            <a class="button button-primary" href="{% url 'portal:plan-select' %}">
+                {% if pricing.mode == 'plan' %}Change plan{% else %}Choose a plan{% endif %}
+                <span aria-hidden="true">→</span>
             </a>
         </div>
-    </div>
+    </header>
 
-    {# Placeholder for Invoices/Billing History #}
-    <div class="bg-white shadow-sm ring-1 ring-slate-900/5 rounded-xl">
-        <div class="p-6">
-            <h2 class="text-lg font-semibold leading-6 text-slate-900">Billing History</h2>
-            <div class="mt-4 text-center py-12 border-2 border-dashed border-slate-200 rounded-lg">
-                <p class="text-sm font-medium text-slate-500">No invoices yet.</p>
-                <p class="mt-1 text-xs text-slate-400">Your monthly invoices for plan subscriptions and fees will appear here.</p>
+    {% if pricing.mode == 'plan' %}
+    <section class="metrics-grid" aria-label="Plan summary">
+        <article class="metric-card featured">
+            <div class="metric-head"><span>{{ pricing.name }} plan</span><span class="metric-icon">◆</span></div>
+            <strong class="metric-value">{{ pricing.price|floatformat:0 }}</strong>
+            <span class="metric-unit">{{ pricing.currency }} billed monthly</span>
+        </article>
+        <article class="metric-card">
+            <div class="metric-head"><span>Transactions used</span><span class="metric-icon">↔</span></div>
+            <strong class="metric-value">{{ pricing.used }}</strong>
+            <span class="metric-unit">of {{ pricing.limit|default:"unlimited" }} this month</span>
+        </article>
+        <article class="metric-card">
+            <div class="metric-head"><span>Remaining</span><span class="metric-icon success">✓</span></div>
+            <strong class="metric-value">{% if pricing.remaining is not None %}{{ pricing.remaining }}{% else %}∞{% endif %}</strong>
+            <span class="metric-unit">Included payments left</span>
+        </article>
+        <article class="metric-card">
+            <div class="metric-head"><span>Transaction fee</span><span class="metric-icon">%</span></div>
+            <strong class="metric-value">0%</strong>
+            <span class="metric-unit">0% transaction fee on included payments</span>
+        </article>
+    </section>
+
+    <section class="panel section">
+        <div class="panel-head">
+            <div>
+                <h2>Current plan</h2>
+                <p>{{ pricing.description|default:"Contracted monthly plan" }}</p>
+            </div>
+            <span class="status-pill status-active"><span></span>Active</span>
+        </div>
+        {% if pricing.limit %}
+        <div class="usage-meter" role="img"
+             aria-label="{{ pricing.usage_percent }} percent of the monthly allowance used">
+            <div class="usage-meter-head">
+                <span>Monthly allowance</span>
+                <strong>{{ pricing.usage_percent }}%</strong>
+            </div>
+            <div class="usage-meter-track">
+                <div class="usage-meter-fill{% if pricing.usage_percent >= 90 %} is-high{% elif pricing.usage_percent >= 70 %} is-warn{% endif %}"
+                     style="width: {{ pricing.usage_percent }}%"></div>
+            </div>
+            <p class="usage-meter-note">
+                {{ pricing.used }} of {{ pricing.limit }} included transactions used.
+                Payments beyond the allowance are billed at the pay-as-you-go rate.
+            </p>
+        </div>
+        {% endif %}
+        <dl class="detail-grid">
+            <div><dt>Plan</dt><dd>{{ pricing.name }}</dd></div>
+            <div><dt>Monthly price</dt><dd>{{ pricing.price|floatformat:2 }} {{ pricing.currency }}</dd></div>
+            <div><dt>Included transactions</dt><dd>{{ pricing.limit|default:"Unlimited" }}</dd></div>
+            <div><dt>Transaction fee</dt><dd>0% transaction fee</dd></div>
+        </dl>
+    </section>
+    {% else %}
+    <section class="metrics-grid" aria-label="Plan summary">
+        <article class="metric-card featured">
+            <div class="metric-head"><span>Pay as you go</span><span class="metric-icon">◆</span></div>
+            <strong class="metric-value">{% if pricing.rate is not None %}{{ pricing.rate|floatformat:2 }}%{% else %}—{% endif %}</strong>
+            <span class="metric-unit">per successful transaction</span>
+        </article>
+        <article class="metric-card">
+            <div class="metric-head"><span>Monthly fee</span><span class="metric-icon success">✓</span></div>
+            <strong class="metric-value">0</strong>
+            <span class="metric-unit">{{ pricing.currency }} — no commitment</span>
+        </article>
+        <article class="metric-card">
+            <div class="metric-head"><span>Settlement</span><span class="metric-icon">◎</span></div>
+            <strong class="metric-value">Net</strong>
+            <span class="metric-unit">Fee deducted before payout</span>
+        </article>
+    </section>
+
+    <section class="panel section">
+        <div class="panel-head">
+            <div>
+                <h2>Current plan</h2>
+                <p>You are on pay-as-you-go pricing.</p>
+            </div>
+            <span class="status-pill status-pending"><span></span>Pay as you go</span>
+        </div>
+        <dl class="detail-grid">
+            <div><dt>Plan</dt><dd>Pay as you go</dd></div>
+            <div><dt>Rate</dt><dd>{% if pricing.rate is not None %}{{ pricing.rate|floatformat:2 }}% per transaction{% else %}Set by AmatoPay{% endif %}</dd></div>
+            <div><dt>Monthly commitment</dt><dd>None</dd></div>
+            <div><dt>How you're charged</dt><dd>A percentage fee on each successful payment, deducted before settlement.</dd></div>
+        </dl>
+        <p class="panel-note">
+            Move to a monthly plan for a fixed price, an included transaction allowance and 0%
+            per-transaction fees. <a class="text-link" href="{% url 'portal:plan-select' %}">Compare plans →</a>
+        </p>
+    </section>
+    {% endif %}
+
+    <section class="panel section">
+        <div class="panel-head">
+            <div>
+                <h2>Billing history</h2>
+                <p>Invoices for plan subscriptions and platform fees</p>
             </div>
         </div>
-    </div>
-</div> {# End of div that replaced <main> #}
+        <div class="empty-state">
+            <span>🧾</span>
+            <strong>No invoices yet</strong>
+            <p>Your monthly invoices will appear here once your first billing cycle closes.</p>
+        </div>
+    </section>
+</main>
 {% endblock %}

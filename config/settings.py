@@ -68,6 +68,15 @@ INSTALLED_APPS = [
     "apps.security.apps.SecurityConfig",
 ]
 
+def _gateway_rail_link(rail):
+    """Link to the unified GatewayRequest changelist pre-filtered by rail."""
+    from django.urls import reverse
+
+    return lambda request: (
+        f"{reverse('admin:cecf_gatewayrequest_changelist')}?rail__exact={rail}"
+    )
+
+
 UNFOLD = {
     "SITE_TITLE": "AmatoPay Operations",
     "SITE_HEADER": "AmatoPay",
@@ -109,21 +118,45 @@ UNFOLD = {
                 "items": [
                     {"title": "Payments", "icon": "payments", "link": reverse_lazy("admin:payments_payment_changelist"), "badge": "config.admin_badges.pending_payments", "badge_variant": "warning"},
                     {"title": "Checkout sessions", "icon": "shopping_cart_checkout", "link": reverse_lazy("admin:checkout_paymentsession_changelist")},
-                    {"title": "Protected funds", "icon": "shield_lock", "link": reverse_lazy("admin:fiduciary_fundhold_changelist"), "badge": "config.admin_badges.protected_funds", "badge_variant": "info"},
-                    {"title": "Settlements", "icon": "account_balance", "link": reverse_lazy("admin:settlements_settlement_changelist"), "badge": "config.admin_badges.pending_settlements", "badge_variant": "warning"},
-                    {"title": "Refunds", "icon": "currency_exchange", "link": reverse_lazy("admin:refunds_refund_changelist"), "badge": "config.admin_badges.pending_refunds", "badge_variant": "warning"},
+                    {"title": "Status history", "icon": "manage_history", "link": reverse_lazy("admin:payments_paymentstatushistory_changelist")},
+                    {"title": "Fee snapshots", "icon": "request_quote", "link": reverse_lazy("admin:payments_transactionfee_changelist")},
+                ],
+            },
+            {
+                "title": "Protected funds",
+                "separator": True,
+                "items": [
+                    {"title": "Fund holds", "icon": "shield_lock", "link": reverse_lazy("admin:fiduciary_fundhold_changelist"), "badge": "config.admin_badges.protected_funds", "badge_variant": "info"},
+                    {"title": "Fiduciary account", "icon": "savings", "link": reverse_lazy("admin:fiduciary_fiduciaryaccount_changelist")},
+                    {"title": "Ledger entries", "icon": "receipt_long", "link": reverse_lazy("admin:fiduciary_fiduciaryentry_changelist")},
+                    {"title": "Deliveries", "icon": "local_shipping", "link": reverse_lazy("admin:deliveries_delivery_changelist")},
+                    {"title": "Delivery confirmations", "icon": "task_alt", "link": reverse_lazy("admin:deliveries_deliveryconfirmation_changelist")},
                     {"title": "Protection claims", "icon": "verified_user", "link": reverse_lazy("admin:deliveries_protectionclaim_changelist"), "badge": "config.admin_badges.open_claims", "badge_variant": "danger"},
+                    {"title": "Claim evidence", "icon": "attach_file", "link": reverse_lazy("admin:deliveries_protectionclaimevidence_changelist")},
+                ],
+            },
+            {
+                "title": "Settlements",
+                "separator": True,
+                "items": [
+                    {"title": "Settlements", "icon": "account_balance", "link": reverse_lazy("admin:settlements_settlement_changelist"), "badge": "config.admin_badges.pending_settlements", "badge_variant": "warning"},
+                    {"title": "Settlement batches", "icon": "inventory", "link": reverse_lazy("admin:settlements_settlementbatch_changelist")},
+                    {"title": "Refunds", "icon": "currency_exchange", "link": reverse_lazy("admin:refunds_refund_changelist"), "badge": "config.admin_badges.pending_refunds", "badge_variant": "warning"},
                 ],
             },
             {
                 "title": "Merchants",
                 "separator": True,
                 "items": [
-                    {"title": "Merchant applications", "icon": "person_add", "link": reverse_lazy("admin:merchants_merchantapplication_changelist"), "badge": "config.admin_badges.merchant_applications", "badge_variant": "warning"},
+                    {"title": "Applications", "icon": "person_add", "link": reverse_lazy("admin:merchants_merchantapplication_changelist"), "badge": "config.admin_badges.merchant_applications", "badge_variant": "warning"},
+                    {"title": "Application reviews", "icon": "rate_review", "link": reverse_lazy("admin:merchants_merchantapplicationreview_changelist")},
                     {"title": "Merchant accounts", "icon": "storefront", "link": reverse_lazy("admin:merchants_merchant_changelist")},
                     {"title": "KYB reviews", "icon": "fact_check", "link": reverse_lazy("admin:merchants_merchantkyb_changelist"), "badge": "config.admin_badges.kyb_reviews", "badge_variant": "warning"},
                     {"title": "Documents", "icon": "folder_managed", "link": reverse_lazy("admin:merchants_merchantdocument_changelist")},
                     {"title": "Settlement accounts", "icon": "account_balance_wallet", "link": reverse_lazy("admin:merchants_merchantsettlementaccount_changelist")},
+                    {"title": "API keys", "icon": "key", "link": reverse_lazy("admin:merchants_merchantapikey_changelist")},
+                    {"title": "Webhook endpoints", "icon": "webhook", "link": reverse_lazy("admin:merchants_merchantwebhookendpoint_changelist")},
+                    {"title": "Merchant activity", "icon": "timeline", "link": reverse_lazy("admin:merchants_merchantactivity_changelist")},
                 ],
             },
             {
@@ -132,7 +165,7 @@ UNFOLD = {
                 "items": [
                     {"title": "Pricing plans", "icon": "sell", "link": reverse_lazy("admin:billing_pricingplan_changelist")},
                     {"title": "Plan assignments", "icon": "assignment_ind", "link": reverse_lazy("admin:billing_merchantplanassignment_changelist")},
-                    {"title": "Fee snapshots", "icon": "request_quote", "link": reverse_lazy("admin:payments_transactionfee_changelist")},
+                    {"title": "Plan requests", "icon": "shopping_bag", "link": reverse_lazy("admin:billing_planrequest_changelist")},
                 ],
             },
             {
@@ -141,8 +174,9 @@ UNFOLD = {
                 "items": [
                     {"title": "Configuration", "icon": "hub", "link": reverse_lazy("admin:cecf_gatewayconfig_changelist"), "badge": "config.admin_badges.gateway_state", "badge_variant": "success"},
                     {"title": "Alias verification", "icon": "person_search", "link": reverse_lazy("admin:cecf_aliasverification_changelist")},
-                    {"title": "RTP collection", "icon": "call_received", "link": reverse_lazy("admin:cecf_rtprequest_changelist"), "badge": "config.admin_badges.pending_rtp", "badge_variant": "warning"},
-                    {"title": "P2P settlement", "icon": "call_made", "link": reverse_lazy("admin:cecf_p2prequest_changelist"), "badge": "config.admin_badges.pending_p2p", "badge_variant": "warning"},
+                    {"title": "Collections", "icon": "call_received", "link": _gateway_rail_link("COLLECTION"), "badge": "config.admin_badges.pending_collections", "badge_variant": "warning"},
+                    {"title": "P2P payouts", "icon": "call_made", "link": _gateway_rail_link("P2P"), "badge": "config.admin_badges.pending_p2p", "badge_variant": "warning"},
+                    {"title": "Gateway callbacks", "icon": "sync_alt", "link": reverse_lazy("admin:cecf_gatewaycallback_changelist")},
                     {"title": "Transaction monitoring", "icon": "monitor_heart", "link": reverse_lazy("admin:cecf_gatewaytransactionpoll_changelist")},
                 ],
             },
@@ -154,9 +188,23 @@ UNFOLD = {
                 "items": [
                     {"title": "Suspicious activity", "icon": "policy", "link": reverse_lazy("admin:compliance_suspicioustransaction_changelist"), "badge": "config.admin_badges.compliance_attention", "badge_variant": "danger"},
                     {"title": "Regulatory reports", "icon": "assured_workload", "link": reverse_lazy("admin:compliance_regulatoryreport_changelist")},
+                    {"title": "Data retention", "icon": "delete_history", "link": reverse_lazy("admin:compliance_dataretentionrecord_changelist")},
+                    {"title": "Webhook events", "icon": "bolt", "link": reverse_lazy("admin:webhooks_webhookevent_changelist")},
                     {"title": "Webhook deliveries", "icon": "webhook", "link": reverse_lazy("admin:webhooks_webhookdelivery_changelist"), "badge": "config.admin_badges.webhook_failures", "badge_variant": "danger"},
                     {"title": "Webhook attempts", "icon": "history", "link": reverse_lazy("admin:webhooks_webhookattempt_changelist")},
+                ],
+            },
+            {
+                "title": "Platform & access",
+                "separator": True,
+                "items": [
                     {"title": "Security center", "icon": "security", "link": reverse_lazy("security-dashboard"), "badge": "config.admin_badges.security_alerts", "badge_variant": "danger"},
+                    {"title": "Security alerts", "icon": "notification_important", "link": reverse_lazy("admin:security_securityalert_changelist")},
+                    {"title": "Blocked IPs", "icon": "block", "link": reverse_lazy("admin:security_blockedip_changelist")},
+                    {"title": "Request log", "icon": "list_alt", "link": reverse_lazy("admin:security_requestlog_changelist")},
+                    {"title": "Idempotency keys", "icon": "fingerprint", "link": reverse_lazy("admin:developers_idempotencykey_changelist")},
+                    {"title": "Users", "icon": "person", "link": reverse_lazy("admin:auth_user_changelist")},
+                    {"title": "Groups", "icon": "shield_person", "link": reverse_lazy("admin:auth_group_changelist")},
                 ],
             },
         ],
@@ -194,6 +242,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "apps.portal.context_processors.merchant_access",
+                "apps.portal.context_processors.site_context",
             ]
         },
     }
@@ -280,6 +329,18 @@ LOGIN_REDIRECT_URL = "/dashboard/"
 LOGOUT_REDIRECT_URL = "/"
 EMAIL_BACKEND = env("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", "AmatoPay <no-reply@amatopay.bi>")
+
+# ---------------------------------------------------------------------------
+# Brand & contact — surfaced in every template by
+# ``apps.portal.context_processors.site_context``. Override per environment.
+# ---------------------------------------------------------------------------
+COMPANY_NAME = env("COMPANY_NAME") or "AmatoPay"
+SUPPORT_EMAIL = env("SUPPORT_EMAIL") or "ndiku6241@gmail.com"
+SALES_EMAIL = env("SALES_EMAIL") or SUPPORT_EMAIL
+DEVELOPERS_EMAIL = env("DEVELOPERS_EMAIL") or SUPPORT_EMAIL
+SUPPORT_PHONE = env("SUPPORT_PHONE") or ""
+PUBLIC_API_BASE_URL = (env("PUBLIC_API_BASE_URL") or "https://api.amatopay.bi").rstrip("/")
+PUBLIC_SITE_URL = (env("PUBLIC_SITE_URL") or "").rstrip("/")
 SECURE_REFERRER_POLICY = "same-origin"
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SESSION_COOKIE_SECURE = not DEBUG
@@ -295,6 +356,32 @@ SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SAMESITE = "Lax"
 FILE_UPLOAD_MAX_MEMORY_SIZE = env_int("FILE_UPLOAD_MAX_MEMORY_SIZE", 5 * 1024 * 1024)
 DATA_UPLOAD_MAX_MEMORY_SIZE = env_int("DATA_UPLOAD_MAX_MEMORY_SIZE", 6 * 1024 * 1024)
+
+# Webhooks — allow plain-http / localhost / private-address endpoints. Meant for
+# local development against a sandbox integration; NEVER enable in production (it
+# disables the SSRF guard on merchant-supplied webhook URLs). Defaults to DEBUG.
+WEBHOOK_ALLOW_INSECURE_URLS = env_bool("WEBHOOK_ALLOW_INSECURE_URLS", DEBUG)
+
+# Background jobs run by `manage.py run_workers` (one process → one systemd unit).
+# Each entry is a management command run on its own interval in its own thread.
+# Add a job here — no code change to run_workers needed. Intervals are seconds.
+AMATOPAY_WORKERS = [
+    {
+        "name": "process_pending_payments",
+        "command": "process_pending_payments --limit 100",
+        "interval": env_int("WORKER_PENDING_PAYMENTS_INTERVAL", 15),
+    },
+    {
+        "name": "reconcile_gateway",
+        "command": "reconcile_gateway --limit 100",
+        "interval": env_int("WORKER_RECONCILE_INTERVAL", 20),
+    },
+    {
+        "name": "process_webhooks",
+        "command": "process_webhooks --limit 100",
+        "interval": env_int("WORKER_WEBHOOKS_INTERVAL", 10),
+    },
+]
 
 LOGGING = {
     "version": 1,

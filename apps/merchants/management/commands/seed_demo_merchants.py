@@ -6,7 +6,6 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.merchants.models import (
-    BeneficialOwner,
     Merchant,
     MerchantApiKey,
     MerchantDocument,
@@ -152,17 +151,6 @@ class Command(BaseCommand):
                     document_type=document_type,
                     defaults={"document_number": number, "verified": True},
                 )
-            BeneficialOwner.objects.update_or_create(
-                merchant=merchant,
-                full_name=data["owner"],
-                defaults={
-                    "nationality": "BI",
-                    "id_number": f"ID-DEMO-{index:04d}",
-                    "ownership_percent": Decimal("100.00"),
-                    "pep": False,
-                    "sanctions_match": False,
-                },
-            )
             MerchantSettlementAccount.objects.update_or_create(
                 merchant=merchant,
                 alias_type="MOBILE",

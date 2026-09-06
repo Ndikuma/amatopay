@@ -35,6 +35,7 @@ class DeliveryConfirmation(UUIDModel, TimeStampedModel):
         VERIFIED_PAYER_ALIAS = "verified_payer_alias", "Verified payer alias"
         MERCHANT_EVIDENCE = "merchant_evidence", "Merchant evidence"
         OPERATIONS_REVIEW = "operations_review", "Operations review"
+        INSTANT_SETTLEMENT = "instant_settlement", "Instant settlement (no confirmation)"
 
     delivery = models.OneToOneField(
         Delivery, on_delete=models.PROTECT, related_name="confirmation"

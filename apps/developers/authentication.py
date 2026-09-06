@@ -6,6 +6,14 @@ from apps.merchants.models import MerchantApiKey
 
 
 class MerchantApiKeyAuthentication(BaseAuthentication):
+    """Authenticate a merchant by their secret API key.
+
+    Accepts the key either as ``Authorization: Bearer sk_...`` or as an
+    ``X-Api-Key: sk_...`` header. This only proves *who* the merchant is;
+    whether they are cleared to transact is an authorization concern handled
+    by the ``IsActiveMerchant`` permission.
+    """
+
     keyword = "Bearer"
 
     def authenticate(self, request):
@@ -28,8 +36,6 @@ class MerchantApiKeyAuthentication(BaseAuthentication):
             raise AuthenticationFailed("Invalid AmatoPay API key.")
         if key.expires_at and key.expires_at <= timezone.now():
             raise AuthenticationFailed("Expired AmatoPay API key.")
-        if key.merchant.status != key.merchant.Status.ACTIVE:
-            raise AuthenticationFailed("Merchant is not active for payments.")
         key.last_used_at = timezone.now()
         key.save(update_fields=["last_used_at", "updated_at"])
         request.merchant = key.merchant

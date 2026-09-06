@@ -38,13 +38,22 @@ class WebhookDeliveryTests(TestCase):
     @patch("apps.webhooks.services.validate_webhook_url")
     @patch("apps.webhooks.services.requests.post")
     def test_success_is_signed_and_attempt_is_audited(self, post, validate_url):
-        post.return_value = Mock(status_code=204, text="", spec=["status_code", "text"])
+        post.return_value = Mock(
+            status_code=204, text='{"ok":true}',
+            headers={"Content-Type": "application/json", "Server": "merchant/1.0"},
+            spec=["status_code", "text", "headers"],
+        )
         delivery = deliver(self.delivery())
 
         self.assertEqual(delivery.status, WebhookDelivery.Status.DELIVERED)
         attempt = WebhookAttempt.objects.get(delivery=delivery)
         self.assertTrue(attempt.succeeded)
         self.assertEqual(attempt.response_status, 204)
+        # The merchant's response is captured for debugging.
+        self.assertEqual(attempt.response_body, '{"ok":true}')
+        self.assertEqual(attempt.response_headers["Content-Type"], "application/json")
+        self.assertEqual(delivery.last_response_body, '{"ok":true}')
+        self.assertEqual(delivery.last_response_headers["Server"], "merchant/1.0")
         sent = post.call_args
         body = sent.kwargs["data"]
         signature = sent.kwargs["headers"]["AmatoPay-Signature"]
@@ -60,11 +69,21 @@ class WebhookDeliveryTests(TestCase):
     @patch("apps.webhooks.services.validate_webhook_url")
     @patch("apps.webhooks.services.requests.post")
     def test_failure_is_scheduled_and_each_retry_has_history(self, post, validate_url):
-        post.return_value = Mock(status_code=503, text="unavailable", spec=["status_code", "text"])
+        post.return_value = Mock(
+            status_code=503, text='{"error":"maintenance"}',
+            headers={"Retry-After": "120"}, spec=["status_code", "text", "headers"],
+        )
         delivery = deliver(self.delivery())
         self.assertEqual(delivery.status, WebhookDelivery.Status.RETRYING)
         self.assertIsNotNone(delivery.next_retry_at)
         self.assertEqual(delivery.attempts, 1)
+        # The failing merchant response is recorded so an operator can see why.
+        self.assertEqual(delivery.last_status_code, 503)
+        self.assertIn("maintenance", delivery.last_response_body)
+        self.assertEqual(
+            delivery.attempt_history.get(attempt_number=1).response_headers["Retry-After"],
+            "120",
+        )
 
         delivery.next_retry_at = None
         delivery.save(update_fields=["next_retry_at", "updated_at"])

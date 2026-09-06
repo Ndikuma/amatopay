@@ -5,7 +5,6 @@
 
 {% block extra_css %}<link rel="stylesheet" href="{% static 'portal/css/merchant-application.css' %}">{% endblock %}
 
-{% block public_content %}
-<div class="success-page"> {# Changed from <main> to <div> as base.html provides the <main> #}
-    <div class="success-card"><i>✓</i><p class="eyebrow">APPLICATION RECEIVED</p><h1>Your merchant workspace is ready.</h1><p>Sign in to follow onboarding. AmatoPay Operations will review your submitted business information.</p><div><small>Your private application reference</small><strong>{{ reference }}</strong></div><p class="note">Submitted information is locked. Contact AmatoPay Support to correct it or provide missing information.</p><a class="home-link" href="{% url 'login' %}">Sign in to your workspace</a></div>
-{% endblock %}
+{% block public_content %}{% include "merchants/_application_received_card.html" %}{% endblock %}
+
+{% block content %}{% include "merchants/_application_received_card.html" %}{% endblock %}

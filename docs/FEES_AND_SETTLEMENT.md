@@ -105,7 +105,7 @@ the backend always resolves them again.
 
 1. Checkout Session creation resolves the current plan or verification rate.
 2. The decision and exact rule references are snapshotted on the session.
-3. Payment/RTP acceptance copies the decision and creates one immutable
+3. Payment/collection acceptance copies the decision and creates one immutable
    `TransactionFee` record under a row lock.
 4. The payer's gross amount enters protected fiduciary funds.
 5. Secure delivery confirmation creates a settlement for the snapshotted net.

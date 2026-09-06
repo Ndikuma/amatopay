@@ -11,8 +11,6 @@ PLANS = (
         "description": "AmatoPay payment collection and settlement for new merchants.",
         "monthly_price": 250000,
         "included_transactions_per_month": 160,
-        "extension_transactions": 80,
-        "extension_price": 150000,
         "features": [
             "Hosted checkout",
             "Signed webhooks",
@@ -26,8 +24,6 @@ PLANS = (
         "description": "More processing capacity with delivery protection and request logs.",
         "monthly_price": 500000,
         "included_transactions_per_month": 320,
-        "extension_transactions": 160,
-        "extension_price": 300000,
         "features": [
             "Hosted checkout",
             "Signed webhooks",
@@ -43,8 +39,6 @@ PLANS = (
         "description": "Full-featured plan for established merchants.",
         "monthly_price": 850000,
         "included_transactions_per_month": 544,
-        "extension_transactions": 272,
-        "extension_price": 510000,
         "features": [
             "Hosted checkout",
             "Signed webhooks",
@@ -53,7 +47,6 @@ PLANS = (
             "Delivery protection",
             "Request logs",
             "Refunds",
-
         ],
     },
     {
@@ -61,9 +54,7 @@ PLANS = (
         "name": "Business Plus",
         "description": "Business plan with priority support and KYB fast-track.",
         "monthly_price": 1050000,
-        "included_transactions_per_month": 672,
-        "extension_transactions": 336,
-        "extension_price": 630000,
+        "included_transactions_per_month": 768,
         "features": [
             "Hosted checkout",
             "Signed webhooks",
@@ -72,7 +63,6 @@ PLANS = (
             "Delivery protection",
             "Request logs",
             "Refunds",
-
             "Priority support",
             "KYB fast-track",
         ],
@@ -83,8 +73,6 @@ PLANS = (
         "description": "High-volume plan with dedicated account manager and custom settlement.",
         "monthly_price": 1500000,
         "included_transactions_per_month": 960,
-        "extension_transactions": 480,
-        "extension_price": 900000,
         "features": [
             "Hosted checkout",
             "Signed webhooks",
@@ -93,7 +81,6 @@ PLANS = (
             "Delivery protection",
             "Request logs",
             "Refunds",
-
             "Priority support",
             "KYB fast-track",
             "Dedicated account manager",
@@ -106,8 +93,6 @@ PLANS = (
         "description": "Contract plan with negotiated allowance, SLA, and compliance reporting.",
         "monthly_price": 2000000,
         "included_transactions_per_month": 1280,
-        "extension_transactions": 640,
-        "extension_price": 1200000,
         "features": [
             "Hosted checkout",
             "Signed webhooks",
@@ -116,7 +101,6 @@ PLANS = (
             "Delivery protection",
             "Request logs",
             "Refunds",
-
             "Priority support",
             "KYB fast-track",
             "Dedicated account manager",
