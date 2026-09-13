@@ -177,3 +177,145 @@ class MobileCashGatewayTests(SimpleTestCase):
                     "amount": "1000.00",
                 }
             )
+
+    def test_qr_scan_returns_full_scan_data(self):
+        self.gateway._session.request.return_value = response(
+            200,
+            {
+                "qrHeaderUUID": "HEADER-1",
+                "qrExtensionUUID": "EXT-1",
+                "qrType": "STAT",
+                "status": "active",
+                "isLocked": False,
+                "amount": "5000.00",
+                "currency": "BIF",
+                "creditorAlias": "+25761000000",
+                "extensions": [
+                    {"qrExtensionUUID": "EXT-1"},
+                    {"qrExtensionUUID": "EXT-2"},
+                ],
+            },
+        )
+
+        result = self.gateway.qr_scan("00020101...IPS_QR_TEXT...6304ABCD")
+
+        self.assertEqual(result["qrHeaderUUID"], "HEADER-1")
+        # top-level qrExtensionUUID + extensions[], de-duplicated, order kept
+        self.assertEqual(result["qrExtensionUUIDs"], ["EXT-1", "EXT-2"])
+        self.assertEqual(result["qrType"], "STAT")
+        self.assertEqual(result["status"], "active")
+        self.assertFalse(result["isLocked"])
+        self.assertEqual(result["creditorAlias"], "+25761000000")
+        request = self.gateway._session.request.call_args
+        self.assertEqual(
+            request.args[1], "https://mobilecash.example/api/IpsQr/scan"
+        )
+
+    def test_qr_scan_collects_extension_uuids_from_extensions_list_only(self):
+        self.gateway._session.request.return_value = response(
+            200,
+            {
+                "qrHeaderUUID": "HEADER-1",
+                "extensions": [{"qrExtensionUUID": "EXT-A"}, {"qrExtensionUUID": "EXT-B"}],
+            },
+        )
+
+        result = self.gateway.qr_scan("00020101...IPS_QR_TEXT...6304ABCD")
+
+        self.assertEqual(result["qrExtensionUUIDs"], ["EXT-A", "EXT-B"])
+
+    def test_qr_scan_rejects_response_without_any_uuid(self):
+        self.gateway._session.request.return_value = response(200, {"status": "pending"})
+
+        with self.assertRaisesRegex(Exception, "header/extension UUID"):
+            self.gateway.qr_scan("00020101...IPS_QR_TEXT...6304ABCD")
+
+    def test_qr_scan_requires_creditor_alias(self):
+        self.gateway.creditor_alias = ""
+
+        with self.assertRaisesRegex(Exception, "creditor_alias is required for QR"):
+            self.gateway.qr_scan("00020101...IPS_QR_TEXT...6304ABCD")
+
+        self.gateway._session.request.assert_not_called()
+
+    def test_list_transactions_paged_normalizes_status_and_qr_fields(self):
+        self.gateway._session.request.return_value = response(
+            200,
+            {
+                "items": [
+                    {
+                        "trxRef": "IPS-QR-1",
+                        "status": "successful",
+                        "amount": "5000.00",
+                        "payerAlias": "+25779000000",
+                        "receiverAlias": "+25761000000",
+                        "isQrPayment": True,
+                        "isRtpPayment": False,
+                        "qrHeaderUuid": "HEADER-1",
+                        "qrExtensionUuid": "EXT-1",
+                    }
+                ]
+            },
+        )
+
+        result = self.gateway.list_transactions_paged(receiver_alias="+25761000000")
+
+        self.assertEqual(len(result["transactions"]), 1)
+        txn = result["transactions"][0]
+        self.assertEqual(txn["trxRef"], "IPS-QR-1")
+        self.assertEqual(txn["status"], "COMPLETED")
+        self.assertEqual(txn["amount"], "5000.00")
+        self.assertTrue(txn["isQrPayment"])
+        self.assertFalse(txn["isRtpPayment"])
+        self.assertEqual(txn["qrHeaderUuid"], "HEADER-1")
+        request = self.gateway._session.request.call_args
+        self.assertEqual(
+            request.args[1], "https://mobilecash.example/api/MobileTrxPay/paged"
+        )
+        self.assertEqual(request.kwargs["params"]["ReceiverAlias"], "+25761000000")
+        self.assertNotIn("PayerAlias", request.kwargs["params"])
+
+    def test_list_transactions_paged_empty_feed(self):
+        self.gateway._session.request.return_value = response(200, {"items": []})
+
+        result = self.gateway.list_transactions_paged(receiver_alias="+25761000000")
+
+        self.assertEqual(result["transactions"], [])
+
+    def test_list_transactions_paged_exposes_pagination_metadata(self):
+        self.gateway._session.request.return_value = response(
+            200, {"items": [], "pageNumber": 2, "totalPages": 4, "totalCount": 40}
+        )
+
+        result = self.gateway.list_transactions_paged(
+            receiver_alias="+25761000000", page_number=2
+        )
+
+        self.assertEqual(result["page_number"], 2)
+        self.assertEqual(result["total_pages"], 4)
+        self.assertEqual(result["total_count"], 40)
+        request = self.gateway._session.request.call_args
+        self.assertEqual(request.kwargs["params"]["PageNumber"], 2)
+
+    def test_list_transactions_paged_filters_out_none_params(self):
+        self.gateway._session.request.return_value = response(200, {"items": []})
+
+        self.gateway.list_transactions_paged(
+            receiver_alias="+25761000000", min_amount=5000.0, max_amount=5000.0
+        )
+
+        request = self.gateway._session.request.call_args
+        params = request.kwargs["params"]
+        self.assertEqual(params["MinAmount"], 5000.0)
+        self.assertEqual(params["MaxAmount"], 5000.0)
+        self.assertNotIn("Status", params)
+        self.assertNotIn("TrxType", params)
+
+    def test_list_transactions_paged_falls_back_to_reference_key(self):
+        self.gateway._session.request.return_value = response(
+            200, {"items": [{"reference": "IPS-QR-9", "status": "pending"}]}
+        )
+
+        result = self.gateway.list_transactions_paged(receiver_alias="+25761000000")
+
+        self.assertEqual(result["transactions"][0]["trxRef"], "IPS-QR-9")

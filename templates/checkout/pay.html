@@ -31,6 +31,23 @@
             </section>
             <section class="payment-panel">
                 <div class="payment-content">
+                    {% if session.payment_method == 'QR' %}
+                    <div class="payment-heading">
+                        <span class="secure-label"><span aria-hidden="true">◇</span> Secure payment</span>
+                        <h2>Scan to pay</h2>
+                        <p>Open your banking or mobile-money app and scan this code to pay AmatoPay directly.</p>
+                    </div>
+                    <div class="payment-method selected" aria-label="QR payment selected"><span class="method-icon">▤</span><span><strong>Scan QR code</strong><small>Pay through your own banking app</small></span><span class="radio" aria-hidden="true"></span></div>
+                    {% if qr_image %}
+                    <div class="qr-field"><img src="{{ qr_image }}" alt="AmatoPay payment QR code" width="220" height="220"></div>
+                    {% endif %}
+                    <p class="field-hint">Amount due is shown in your banking app after you scan.</p>
+                    <div id="payment-status"
+                         class="payment-status"
+                         role="status"
+                         aria-live="polite"
+                         >Waiting for you to scan and complete the payment…</div>
+                    {% else %}
                     <div class="payment-heading">
                         <span class="secure-label"><span aria-hidden="true">◇</span> Secure payment</span>
                         <h2>Approve your payment request</h2>
@@ -44,6 +61,7 @@
                          role="status"
                          aria-live="polite"
                          >Approve the request in your banking or mobile-money application.</div>
+                    {% endif %}
                     <div class="trust-row">
                         <span aria-hidden="true">▱</span>
                         <p><strong>Your payment is protected</strong><small>AmatoPay never stores your banking credentials.</small></p>

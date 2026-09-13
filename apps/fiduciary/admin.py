@@ -6,7 +6,13 @@ from django.utils.html import format_html
 from unfold.admin import ModelAdmin
 
 from apps.core.admin_base import ReadOnlyAmatoModelAdmin
-from .models import FiduciaryAccount, FiduciaryEntry, FundHold
+from .models import (
+    FiduciaryAccount,
+    FiduciaryEntry,
+    FiduciaryQRCode,
+    FiduciaryQRExtension,
+    FundHold,
+)
 
 
 class ReadOnlyModelAdmin(ModelAdmin):
@@ -64,6 +70,52 @@ class FiduciaryAccountAdmin(ReadOnlyAmatoModelAdmin):
     def total_hold_amount(self, obj):
         amount = obj.total_hold_amount or 0
         return f"{amount:.2f} {obj.currency}"
+
+
+class FiduciaryQRExtensionInline(admin.TabularInline):
+    model = FiduciaryQRExtension
+    extra = 0
+    can_delete = False
+    fields = (
+        "qr_extension_uuid",
+        "status",
+        "is_last",
+        "creditor_name",
+        "amount",
+        "remittance_info",
+        "ttl_length",
+        "ttl_units",
+        "last_synced_at",
+    )
+    readonly_fields = fields
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(FiduciaryQRCode)
+class FiduciaryQRCodeAdmin(ReadOnlyAmatoModelAdmin):
+    """Ops-facing view of AmatoPay's own registered QR — use the "Scan QR
+    code" action on Gateway configuration to (re)sync this record."""
+
+    list_display = (
+        "creditor_alias",
+        "qr_header_uuid",
+        "qr_type",
+        "status",
+        "is_locked",
+        "extension_count",
+        "last_synced_at",
+    )
+    list_filter = ("status", "is_locked", "qr_type")
+    search_fields = ("creditor_alias", "qr_header_uuid", "merchant_code")
+    readonly_fields = [field.name for field in FiduciaryQRCode._meta.fields]
+    inlines = [FiduciaryQRExtensionInline]
+    ordering = ("-last_synced_at",)
+
+    @admin.display(description="Extensions")
+    def extension_count(self, obj):
+        return obj.extensions.count()
 
 
 @admin.register(FundHold)

@@ -128,6 +128,7 @@ UNFOLD = {
                 "items": [
                     {"title": "Fund holds", "icon": "shield_lock", "link": reverse_lazy("admin:fiduciary_fundhold_changelist"), "badge": "config.admin_badges.protected_funds", "badge_variant": "info"},
                     {"title": "Fiduciary account", "icon": "savings", "link": reverse_lazy("admin:fiduciary_fiduciaryaccount_changelist")},
+                    {"title": "Fiduciary QR code", "icon": "qr_code_2", "link": reverse_lazy("admin:fiduciary_fiduciaryqrcode_changelist"), "badge": "config.admin_badges.qr_code_locked", "badge_variant": "danger"},
                     {"title": "Ledger entries", "icon": "receipt_long", "link": reverse_lazy("admin:fiduciary_fiduciaryentry_changelist")},
                     {"title": "Deliveries", "icon": "local_shipping", "link": reverse_lazy("admin:deliveries_delivery_changelist")},
                     {"title": "Delivery confirmations", "icon": "task_alt", "link": reverse_lazy("admin:deliveries_deliveryconfirmation_changelist")},
@@ -174,6 +175,7 @@ UNFOLD = {
                 "items": [
                     {"title": "Configuration", "icon": "hub", "link": reverse_lazy("admin:cecf_gatewayconfig_changelist"), "badge": "config.admin_badges.gateway_state", "badge_variant": "success"},
                     {"title": "Alias verification", "icon": "person_search", "link": reverse_lazy("admin:cecf_aliasverification_changelist")},
+                    {"title": "QR payment watches", "icon": "qr_code_scanner", "link": reverse_lazy("admin:cecf_qrpaymentwatch_changelist"), "badge": "config.admin_badges.pending_qr_watches", "badge_variant": "warning"},
                     {"title": "Collections", "icon": "call_received", "link": _gateway_rail_link("COLLECTION"), "badge": "config.admin_badges.pending_collections", "badge_variant": "warning"},
                     {"title": "P2P payouts", "icon": "call_made", "link": _gateway_rail_link("P2P"), "badge": "config.admin_badges.pending_p2p", "badge_variant": "warning"},
                     {"title": "Gateway callbacks", "icon": "sync_alt", "link": reverse_lazy("admin:cecf_gatewaycallback_changelist")},
@@ -380,6 +382,11 @@ AMATOPAY_WORKERS = [
         "name": "process_webhooks",
         "command": "process_webhooks --limit 100",
         "interval": env_int("WORKER_WEBHOOKS_INTERVAL", 10),
+    },
+    {
+        "name": "poll_qr_payments",
+        "command": "poll_qr_payments --limit 100",
+        "interval": env_int("WORKER_QR_POLL_INTERVAL", 5),
     },
 ]
 

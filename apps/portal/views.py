@@ -750,11 +750,15 @@ def pay(request, session_id):
     session = get_object_or_404(
         PaymentSession.objects.select_related("merchant"), session_id=session_id
     )
-    return render(
-        request,
-        "checkout/pay.html",
-        {"session": session, "merchant": session.merchant},
-    )
+    context = {"session": session, "merchant": session.merchant}
+    if session.payment_method == PaymentSession.PaymentMethod.QR:
+        from apps.gateway.models import GatewayConfig
+        from apps.gateway.qr_image import generate_qr_data_uri
+
+        config = GatewayConfig.active()
+        if config and config.qr_code_text:
+            context["qr_image"] = generate_qr_data_uri(config.qr_code_text)
+    return render(request, "checkout/pay.html", context)
 
 
 def home(request):

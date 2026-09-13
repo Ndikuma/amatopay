@@ -11,6 +11,14 @@ class GatewayConfig(UUIDModel, TimeStampedModel):
     username = models.CharField(max_length=150, blank=True)
     password = models.CharField(max_length=255, blank=True)
     creditor_alias = models.CharField(max_length=80, blank=True)
+    qr_code_text = models.TextField(
+        blank=True,
+        help_text=(
+            "AmatoPay's own bank-registered static IPS QR payload (for the "
+            "creditor_alias above). Rendered as a scannable image on QR "
+            "checkout pages. Not required unless QR payments are used."
+        ),
+    )
     timeout_seconds = models.PositiveSmallIntegerField(default=15)
     verify_tls = models.BooleanField(default=True)
     is_active = models.BooleanField(default=False)
@@ -200,3 +208,45 @@ class GatewayTransactionPoll(UUIDModel, TimeStampedModel):
         indexes = [
             models.Index(fields=["rail", "trx_ref", "-created_at"], name="idx_gateway_poll_trx"),
         ]
+
+
+class QRPaymentWatch(UUIDModel, TimeStampedModel):
+    """Tracks a passive watch on AmatoPay's shared QR after a ``qr.scan()`` call.
+
+    Unlike ``GatewayRequest`` (which always represents a request AmatoPay
+    initiated and has a real ``trxRef`` from creation), a QR payment has no
+    known payer and no trxRef until a matching transaction is discovered by
+    polling the header/extension UUID's transaction feed. Kept as its own
+    model so it never has to satisfy ``GatewayRequest``'s "has a provider
+    reference" invariant used by the collection/P2P reconciler.
+    """
+
+    class Status(models.TextChoices):
+        WATCHING = "watching", "Watching"
+        MATCHED = "matched", "Matched"
+        EXPIRED = "expired", "Expired"
+        FAILED = "failed", "Failed"
+
+    payment = models.OneToOneField(
+        "payments.Payment", on_delete=models.PROTECT, related_name="qr_watch"
+    )
+    qr_header_uuid = models.CharField(max_length=120, blank=True, db_index=True)
+    qr_extension_uuids = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Every qrExtensionUUID from the scan response (top-level + extensions[]).",
+    )
+    qr_type = models.CharField(max_length=20, blank=True)
+    raw_scan_response = models.JSONField(default=dict, blank=True)
+    status = models.CharField(
+        max_length=12, choices=Status.choices, default=Status.WATCHING
+    )
+    matched_trx_ref = models.CharField(max_length=120, blank=True)
+    last_polled_at = models.DateTimeField(null=True, blank=True)
+    next_poll_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    poll_attempts = models.PositiveIntegerField(default=0)
+    consecutive_poll_failures = models.PositiveSmallIntegerField(default=0)
+    last_poll_error = models.TextField(blank=True)
+
+    def __str__(self):
+        return f"QR watch for {self.payment_id} ({self.status})"

@@ -8,6 +8,7 @@ from rest_framework.test import APIClient
 from apps.billing.models import PricingPlan
 from apps.checkout.models import PaymentSession
 from apps.gateway.models import AliasVerification, GatewayRequest
+from apps.gateway.provider import MobileCashGatewayError
 from apps.merchants.models import Merchant, MerchantApiKey
 from apps.payments.models import Payment
 
@@ -121,3 +122,35 @@ class MerchantCheckoutCollectionApiTests(TestCase):
         self.assertFalse(PaymentSession.objects.exists())
         self.assertFalse(Payment.objects.exists())
         self.assertFalse(GatewayRequest.objects.exists())
+
+    @patch("apps.gateway.services.client.verify_alias")
+    def test_gateway_outage_returns_clean_message_not_raw_body(self, verify_alias):
+        """A MobileCashGatewayError carries the gateway's raw HTTP body in
+        its message (see MobileCashGatewayError.__init__) — that must never
+        reach the merchant. AmatoPay decides the response; the gateway
+        doesn't."""
+        verify_alias.side_effect = MobileCashGatewayError(
+            "alias.verify", 502, "<html>internal stack trace, db host, secrets</html>"
+        )
+        self.client.credentials(HTTP_X_API_KEY=self.raw_key)
+
+        response = self.client.get(self.verify_url, {"payer_alias": "+25779000000"})
+
+        self.assertEqual(response.status_code, 400)
+        self.assertNotIn("internal stack trace", response.content.decode())
+        self.assertNotIn("db host", response.content.decode())
+        self.assertIn("temporarily unavailable", response.content.decode())
+
+    @patch("apps.gateway.services.client.verify_alias")
+    def test_checkout_session_gateway_outage_returns_clean_message(self, verify_alias):
+        verify_alias.side_effect = MobileCashGatewayError(
+            "alias.verify", 502, "<html>internal stack trace, db host, secrets</html>"
+        )
+        self.client.credentials(HTTP_X_API_KEY=self.raw_key)
+
+        response = self.client.post(self.url, self.payload, format="json")
+
+        self.assertEqual(response.status_code, 400)
+        self.assertNotIn("internal stack trace", response.content.decode())
+        self.assertNotIn("db host", response.content.decode())
+        self.assertFalse(PaymentSession.objects.exists())

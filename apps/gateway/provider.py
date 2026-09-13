@@ -283,10 +283,138 @@ class MobileCashGateway:
         reason = self._find(
             result, "reasonCode", "statusDescription", "descrResp"
         ) or ""
+        # QR payments have no known payer until the transaction resolves —
+        # best-effort: the alias flow already knows its payer, so this is a
+        # no-op there. Field name isn't documented for this endpoint; try the
+        # same debtor* naming collection.create sends.
+        debtor_alias = self._find(result, "debtorAlias", "payerAlias", "debtorPhone")
         return {
             "trxRef": str(reference),
             "status": self.normalize_status(status),
             "reasonCode": str(reason),
+            "debtorAlias": str(debtor_alias or ""),
+            "provider": result,
+        }
+
+    def qr_scan(self, qr_code_data: str, wait_seconds: int = 8) -> dict[str, Any]:
+        """Open a watch on AmatoPay's own registered QR.
+
+        The payer scans this same code with their own banking app and pays
+        it there — AmatoPay never initiates the debit. This returns the full
+        IpsQrResponseDto: header/extension UUID(s) to poll, the QR's own
+        type/status/lock state, and the creditor alias it is registered to
+        (so the caller can confirm the code hasn't been swapped/misconfigured).
+        """
+        if not self.creditor_alias:
+            raise MobileCashGatewayError(
+                "qr.scan", 0, "The active gateway creditor_alias is required for QR"
+            )
+        result = self._request(
+            "POST",
+            endpoints.QR_SCAN,
+            "qr.scan",
+            json={"qrCodeData": qr_code_data, "waitSeconds": wait_seconds},
+        )
+        header_uuid = self._find(result, "qrHeaderUUID", "qrHeaderUuid")
+        extension_uuids = []
+        top_level_extension = self._find(result, "qrExtensionUUID", "qrExtensionUuid")
+        if top_level_extension:
+            extension_uuids.append(str(top_level_extension))
+        for extension in (result.get("extensions") or []) if isinstance(result, dict) else []:
+            ext_uuid = self._find(extension, "qrExtensionUUID", "qrExtensionUuid")
+            if ext_uuid:
+                extension_uuids.append(str(ext_uuid))
+        extension_uuids = list(dict.fromkeys(extension_uuids))  # de-dupe, keep order
+        if not header_uuid and not extension_uuids:
+            raise MobileCashGatewayError(
+                "qr.scan", 502, "Gateway response did not contain a QR header/extension UUID"
+            )
+        return {
+            "qrHeaderUUID": str(header_uuid or ""),
+            "qrExtensionUUIDs": extension_uuids,
+            "qrType": str(self._find(result, "qrType") or ""),
+            "status": str(self._find(result, "status") or ""),
+            "isLocked": bool(self._find(result, "isLocked")),
+            "amount": self._find(result, "amount"),
+            "currency": self._find(result, "currency"),
+            "creditorAlias": self._find(result, "creditorAlias"),
+            "provider": result,
+        }
+
+    def list_transactions_paged(
+        self,
+        *,
+        receiver_alias: str | None = None,
+        payer_alias: str | None = None,
+        status: str | None = None,
+        trx_type: str | None = None,
+        trx_code: str | None = None,
+        from_date: str | None = None,
+        to_date: str | None = None,
+        min_amount: float | None = None,
+        max_amount: float | None = None,
+        search_term: str | None = None,
+        page_number: int = 1,
+        page_size: int = 100,
+    ) -> dict[str, Any]:
+        """Search AmatoPay's own transaction ledger at the gateway.
+
+        Used to discover QR payments: the payer scans AmatoPay's shared QR
+        and pays directly at the bank, so AmatoPay has no trxRef for it until
+        this feed surfaces one under our own ``receiver_alias`` (creditor).
+        Replaces the old header/extension-UUID transaction feeds, which the
+        gateway has stopped reliably stamping onto transactions.
+        """
+        params = {
+            "ReceiverAlias": receiver_alias,
+            "PayerAlias": payer_alias,
+            "Status": status,
+            "TrxType": trx_type,
+            "TrxCode": trx_code,
+            "FromDate": from_date,
+            "ToDate": to_date,
+            "MinAmount": min_amount,
+            "MaxAmount": max_amount,
+            "SearchTerm": search_term,
+            "PageNumber": page_number,
+            "PageSize": page_size,
+        }
+        params = {key: value for key, value in params.items() if value is not None}
+        result = self._request(
+            "GET", endpoints.TRANSACTIONS_PAGED, "transactions.list_paged", params=params
+        )
+        raw_items = self._find(result, "items", "data", "transactions") or []
+        if isinstance(result, list):
+            raw_items = result
+        transactions = []
+        for item in raw_items:
+            reference = self._find(item, "trxRef", "trxref", "reference", "trnRef")
+            if not reference:
+                continue
+            item_status = self._find(item, "status") or "PENDING"
+            transactions.append(
+                {
+                    "trxRef": str(reference),
+                    "status": self.normalize_status(item_status),
+                    "amount": self._find(item, "amount"),
+                    "payerAlias": self._find(item, "payerAlias") or "",
+                    "receiverAlias": self._find(item, "receiverAlias") or "",
+                    "trxDate": self._find(item, "trxDate") or "",
+                    "isQrPayment": bool(self._find(item, "isQrPayment")),
+                    "isRtpPayment": bool(self._find(item, "isRtpPayment")),
+                    "qrHeaderUuid": self._find(item, "qrHeaderUuid") or "",
+                    "qrExtensionUuid": self._find(item, "qrExtensionUuid") or "",
+                    "provider": item,
+                }
+            )
+        page_number_seen = self._find(result, "pageNumber") or page_number
+        total_pages = self._find(result, "totalPages") or 1
+        total_count = self._find(result, "totalCount") or len(transactions)
+        return {
+            "transactions": transactions,
+            "page_number": int(page_number_seen),
+            "total_pages": int(total_pages),
+            "total_count": int(total_count),
             "provider": result,
         }
 

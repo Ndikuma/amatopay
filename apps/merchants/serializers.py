@@ -29,9 +29,13 @@ class MerchantDocumentSerializer(serializers.ModelSerializer):
 
 
 class MerchantSettlementAccountSerializer(serializers.ModelSerializer):
+    """AmatoPay decides what to expose — raw_verification (the gateway's
+    full alias-verify response) stays internal, never round-tripped through
+    the API even for operations staff."""
+
     class Meta:
         model = MerchantSettlementAccount
-        fields = "__all__"
+        exclude = ["raw_verification"]
         read_only_fields = [
             "id",
             "verification_status",
@@ -39,7 +43,6 @@ class MerchantSettlementAccountSerializer(serializers.ModelSerializer):
             "account_name",
             "account_type",
             "provider_customer_reference",
-            "raw_verification",
             "created_at",
             "updated_at",
         ]

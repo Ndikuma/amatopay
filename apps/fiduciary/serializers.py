@@ -3,9 +3,13 @@ from .models import FiduciaryAccount, FundHold, FiduciaryEntry
 
 
 class FiduciaryAccountSerializer(serializers.ModelSerializer):
+    """AmatoPay decides what to expose — raw_verification (the gateway's
+    full alias-verify response) stays internal, never round-tripped through
+    the API even for operations staff."""
+
     class Meta:
         model = FiduciaryAccount
-        fields = "__all__"
+        exclude = ["raw_verification"]
 
 
 class FundHoldSerializer(serializers.ModelSerializer):

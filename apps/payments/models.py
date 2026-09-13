@@ -7,6 +7,7 @@ class Payment(UUIDModel, TimeStampedModel):
     class Status(models.TextChoices):
         CREATED = "created", "Created"
         ALIAS_VERIFIED = "alias_verified", "Alias verified"
+        QR_PENDING = "qr_pending", "Awaiting QR scan"
         COLLECTION_PENDING = "collection_pending", "Collection pending"
         AWAITING_APPROVAL = "awaiting_approval", "Awaiting approval"
         PROCESSING = "processing", "Processing"

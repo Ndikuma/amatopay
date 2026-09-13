@@ -1,7 +1,7 @@
 from apps.compliance.models import SuspiciousTransaction
 from apps.deliveries.models import ProtectionClaim
-from apps.fiduciary.models import FundHold
-from apps.gateway.models import GatewayConfig, GatewayRequest
+from apps.fiduciary.models import FiduciaryQRCode, FundHold
+from apps.gateway.models import GatewayConfig, GatewayRequest, QRPaymentWatch
 from apps.merchants.models import MerchantApplication, MerchantKYB
 from apps.payments.models import Payment
 from apps.refunds.models import Refund
@@ -76,6 +76,24 @@ def pending_p2p(request):
             rail=GatewayRequest.Rail.P2P, status__in=_IN_FLIGHT
         ).count()
     )
+
+
+def pending_qr_watches(request):
+    return _badge(
+        QRPaymentWatch.objects.filter(status=QRPaymentWatch.Status.WATCHING).count()
+    )
+
+
+def qr_code_locked(request):
+    # Sidebar badge: runs on every admin page load, so fetch only the one
+    # column needed — not the full row (qr_as_image/qr_as_text/raw_response
+    # can be large blobs).
+    is_locked = (
+        FiduciaryQRCode.objects.filter(singleton_key="AMATOPAY")
+        .values_list("is_locked", flat=True)
+        .first()
+    )
+    return "Locked" if is_locked else None
 
 
 def compliance_attention(request):

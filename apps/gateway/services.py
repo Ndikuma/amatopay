@@ -193,6 +193,7 @@ def recover_collection_status(collection):
             "trxRef": collection.trx_ref,
             "status": status,
             "reasonCode": result.get("reasonCode", ""),
+            "debtorAlias": result.get("debtorAlias", ""),
         }
     )
 

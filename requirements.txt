@@ -8,6 +8,7 @@ django-unfold==0.103.0
 psycopg[binary]>=3.2
 requests>=2.32
 Pillow>=11.0
+qrcode>=8.0
 PyYAML>=6.0
 python-dotenv>=1.0
 cryptography>=45.0

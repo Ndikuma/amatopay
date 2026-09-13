@@ -23,6 +23,7 @@ from drf_spectacular.utils import (
 
 from apps.developers.authentication import MerchantApiKeyAuthentication
 from apps.developers.permissions import IsActiveMerchant
+from apps.gateway.collection import PaymentGatewayError
 from apps.gateway.services import AliasNotPayableError, verify_merchant_payer_alias
 
 from .models import PaymentSession
@@ -30,6 +31,7 @@ from .serializers import (
     MerchantAliasVerificationResultSerializer,
     MerchantAliasVerificationSerializer,
     PaymentSessionSerializer,
+    QRPaymentSessionSerializer,
 )
 
 
@@ -71,9 +73,58 @@ class PaymentSessionViewSet(
     lookup_field = "session_id"
 
     def get_queryset(self):
-        return PaymentSession.objects.filter(merchant=self.request.merchant).order_by(
-            "-created_at"
-        )
+        return PaymentSession.objects.filter(
+            merchant=self.request.merchant,
+            payment_method=PaymentSession.PaymentMethod.ALIAS,
+        ).order_by("-created_at")
+
+
+@extend_schema_view(
+    create=extend_schema(
+        summary="Create a QR payment session",
+        description=(
+            "Verifies the payer MOBILE alias (same lookup the push flow "
+            "uses), creates a checkout/payment fee snapshot, and opens a "
+            "watch on AmatoPay's shared QR code. The payer scans the code on "
+            "the hosted checkout page and pays through their own banking "
+            "app; unlike the push flow, AmatoPay never initiates the debit "
+            "or pushes a request to the alias — it only verifies who is "
+            "expected to pay before they scan. Requires the merchant to "
+            "have qr_payments_enabled. The session expires after three hours."
+        ),
+        examples=[
+            OpenApiExample(
+                "Create a QR payment session",
+                request_only=True,
+                value={
+                    "order_number": "ORDER-1002",
+                    "description": "In-store purchase",
+                    "amount": "20000.00",
+                    "currency": "BIF",
+                    "payer_alias": "+25779000000",
+                    "return_url": "https://merchant.bi/payment/result",
+                },
+            ),
+        ],
+    )
+)
+class QRPaymentSessionViewSet(
+    mixins.CreateModelMixin,
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    GenericViewSet,
+):
+    queryset = PaymentSession.objects.none()
+    serializer_class = QRPaymentSessionSerializer
+    authentication_classes = [MerchantApiKeyAuthentication]
+    permission_classes = [IsActiveMerchant]
+    lookup_field = "session_id"
+
+    def get_queryset(self):
+        return PaymentSession.objects.filter(
+            merchant=self.request.merchant,
+            payment_method=PaymentSession.PaymentMethod.QR,
+        ).order_by("-created_at")
 
 
 @extend_schema(
@@ -98,6 +149,11 @@ def merchant_alias_verify(request):
         )
     except AliasNotPayableError as exc:
         raise ValidationError({"payer_alias": str(exc)}) from exc
+    except PaymentGatewayError as exc:
+        # Already a curated, safe-to-show message — never the gateway's own
+        # raw error body. Caught here so it becomes a clean 400 response
+        # instead of an opaque 500.
+        raise ValidationError(str(exc)) from exc
 
     return Response(
         {

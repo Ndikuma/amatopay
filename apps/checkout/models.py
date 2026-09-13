@@ -4,6 +4,10 @@ from apps.core.models import UUIDModel, TimeStampedModel
 
 
 class PaymentSession(UUIDModel, TimeStampedModel):
+    class PaymentMethod(models.TextChoices):
+        ALIAS = "ALIAS", "Push to alias"
+        QR = "QR", "Scan QR code"
+
     class Status(models.TextChoices):
         CREATED = "created", "Created"
         AWAITING_ALIAS = "awaiting_alias", "Awaiting alias"
@@ -42,6 +46,9 @@ class PaymentSession(UUIDModel, TimeStampedModel):
     )
     fee_calculated_at = models.DateTimeField(null=True, blank=True)
     currency = models.CharField(max_length=3, default="BIF")
+    payment_method = models.CharField(
+        max_length=10, choices=PaymentMethod.choices, default=PaymentMethod.ALIAS
+    )
     payer_alias = models.CharField(max_length=160, blank=True)
     payer_display_name = models.CharField(max_length=180, blank=True)
     return_url = models.URLField(blank=True)

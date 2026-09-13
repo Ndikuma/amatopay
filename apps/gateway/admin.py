@@ -14,6 +14,7 @@ from .models import (
     GatewayConfig,
     GatewayRequest,
     GatewayTransactionPoll,
+    QRPaymentWatch,
 )
 
 
@@ -45,10 +46,21 @@ class GatewayConfigAdmin(ModelAdmin):
             "BurundiPay authentication",
             {"fields": ("username", "password", "creditor_alias")},
         ),
+        (
+            "QR payments",
+            {
+                "fields": ("qr_code_text",),
+                "description": (
+                    "AmatoPay's own bank-registered static IPS QR payload for "
+                    "the creditor_alias above. Required only if any merchant "
+                    "has qr_payments_enabled."
+                ),
+            },
+        ),
         ("Connection", {"fields": ("timeout_seconds", "verify_tls")}),
         ("Audit", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
     )
-    actions = ("test_connection", "activate")
+    actions = ("test_connection", "activate", "scan_qr_code")
 
     @admin.action(description="Test selected gateway connections")
     def test_connection(self, request, queryset):
@@ -82,6 +94,29 @@ class GatewayConfigAdmin(ModelAdmin):
         config.is_active = True
         config.save()
         self.message_user(request, f"{config.name} is now active.")
+
+    @admin.action(description="Scan QR code (sync to fiduciary)")
+    def scan_qr_code(self, request, queryset):
+        from apps.fiduciary.services import sync_fiduciary_qr_code
+
+        if not queryset.filter(is_active=True).exists():
+            self.message_user(
+                request,
+                "Select the active gateway to scan its QR code.",
+                level=messages.ERROR,
+            )
+            return
+        try:
+            qr_code = sync_fiduciary_qr_code()
+        except Exception as exc:
+            self.message_user(request, f"QR scan failed: {exc}", level=messages.ERROR)
+            return
+        self.message_user(
+            request,
+            f"Synced QR code (header={qr_code.qr_header_uuid}, "
+            f"status={qr_code.status!r}, extensions={qr_code.extensions.count()}). "
+            "See it under Fiduciary QR codes.",
+        )
 
 
 @admin.register(GatewayRequest)
@@ -174,3 +209,18 @@ class GatewayTransactionPollAdmin(ReadOnlyAmatoModelAdmin):
     list_filter = ("rail", "succeeded", "status")
     search_fields = ("trx_ref", "request_id", "error")
     readonly_fields = [field.name for field in GatewayTransactionPoll._meta.fields]
+
+
+@admin.register(QRPaymentWatch)
+class QRPaymentWatchAdmin(ReadOnlyAmatoModelAdmin):
+    list_display = (
+        "payment",
+        "status",
+        "qr_header_uuid",
+        "matched_trx_ref",
+        "poll_attempts",
+        "created_at",
+    )
+    list_filter = ("status",)
+    search_fields = ("qr_header_uuid", "matched_trx_ref", "payment__reference")
+    readonly_fields = [field.name for field in QRPaymentWatch._meta.fields]

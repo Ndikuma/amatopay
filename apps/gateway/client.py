@@ -64,3 +64,11 @@ def get_p2p_status(reference):
 
 def send_sms(phone_number, message):
     return _mobilecash().send_sms(phone_number, message)
+
+
+def qr_scan(qr_code_text, wait_seconds=8):
+    return _mobilecash().qr_scan(qr_code_text, wait_seconds=wait_seconds)
+
+
+def list_transactions_paged(**kwargs):
+    return _mobilecash().list_transactions_paged(**kwargs)

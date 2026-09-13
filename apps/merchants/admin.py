@@ -103,7 +103,7 @@ class MerchantAdmin(ModelAdmin):
         "default_fee",
         "effective_fee",
     )
-    list_filter = ("status", "country", "risk_rating", "instant_settlement_enabled")
+    list_filter = ("status", "country", "risk_rating", "instant_settlement_enabled", "qr_payments_enabled")
     search_fields = ("merchant_code", "legal_name", "display_name", "email")
 
     @admin.display(description="KYC status")

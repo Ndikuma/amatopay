@@ -185,6 +185,15 @@ class Merchant(UUIDModel, TimeStampedModel):
             "with no secure-code delivery gate. Grant only after a risk review."
         ),
     )
+    qr_payments_enabled = models.BooleanField(
+        default=False,
+        help_text=(
+            "AmatoPay-granted capability. When enabled, this merchant may create "
+            "checkout sessions with payment_method=QR — the payer scans AmatoPay's "
+            "shared QR code and pays through their own banking app instead of "
+            "approving a request pushed to a typed alias."
+        ),
+    )
     metadata = models.JSONField(default=dict, blank=True)
     owner = models.OneToOneField(
         User,

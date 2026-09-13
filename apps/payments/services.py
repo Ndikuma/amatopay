@@ -1,3 +1,4 @@
+import logging
 import secrets
 
 from django.contrib.auth.hashers import make_password
@@ -9,11 +10,14 @@ from apps.billing.services import (
     ensure_checkout_fee_snapshot,
 )
 from apps.checkout.models import PaymentSession
+from apps.gateway import client
 from apps.gateway.collection import (
+    PaymentGatewayError,
     call_create_collection,
     new_collection_request_id,
     persist_collection_request,
 )
+from apps.gateway.models import GatewayConfig, QRPaymentWatch
 from apps.webhooks.services import emit_event
 
 from .models import Payment, PaymentStatusHistory
@@ -41,6 +45,120 @@ def initiate_payment(session):
         PaymentStatusHistory.objects.create(payment=payment, status=payment.status)
     create_transaction_fee_snapshot(payment)
     return payment
+
+
+@transaction.atomic
+def start_qr_watch(payment):
+    """Open a watch on AmatoPay's shared QR for this payment. Idempotent.
+
+    Unlike the alias flow, this never calls ``create_collection`` — there is
+    no known payer to push a request to. ``poll_qr_payments`` discovers the
+    matching transaction later and hands off to :func:`record_qr_collection`,
+    which converges into the *existing*, untouched collection reconciler
+    (``reconcile_gateway`` / ``recover_collection_status``) for status
+    resolution — the QR endpoints are only ever used here, for discovery.
+    """
+    if hasattr(payment, "qr_watch"):
+        return payment.qr_watch
+    config = GatewayConfig.active()
+    if not config or not config.qr_code_text:
+        raise PaymentGatewayError(
+            "QR payments are not configured. Contact AmatoPay."
+        )
+    try:
+        result = client.qr_scan(config.qr_code_text)
+    except Exception as exc:
+        from apps.gateway.provider import MobileCashGatewayError
+
+        if isinstance(exc, MobileCashGatewayError):
+            raise PaymentGatewayError(
+                "QR payment could not be started. Please try again."
+            ) from exc
+        raise
+
+    # AmatoPay's own code must be the one that was actually scanned — refuse
+    # to watch a QR the provider says belongs to a different creditor alias,
+    # and refuse a code that isn't currently usable.
+    scanned_creditor = str(result.get("creditorAlias") or "").strip()
+    if scanned_creditor and scanned_creditor != config.creditor_alias.strip():
+        raise PaymentGatewayError(
+            "QR payments are misconfigured (creditor alias mismatch). Contact AmatoPay."
+        )
+    qr_status = str(result.get("status") or "").strip().upper()
+    if qr_status in {"EXPIRED", "CANCELLED"}:
+        raise PaymentGatewayError(
+            "AmatoPay's QR code is no longer usable. Contact AmatoPay."
+        )
+    if result.get("isLocked"):
+        raise PaymentGatewayError(
+            "AmatoPay's QR code is currently in use. Please try again shortly."
+        )
+
+    watch = QRPaymentWatch.objects.create(
+        payment=payment,
+        qr_header_uuid=result.get("qrHeaderUUID", ""),
+        qr_extension_uuids=result.get("qrExtensionUUIDs", []),
+        qr_type=result.get("qrType", ""),
+        raw_scan_response=result.get("provider", {}),
+    )
+    payment.status = Payment.Status.QR_PENDING
+    payment.save(update_fields=["status", "updated_at"])
+    PaymentStatusHistory.objects.create(
+        payment=payment, status=payment.status, source="qr"
+    )
+    payment.session.status = PaymentSession.Status.AWAITING_PAYMENT
+    payment.session.save(update_fields=["status", "updated_at"])
+    return watch
+
+
+@transaction.atomic
+def record_qr_collection(payment, trx_ref):
+    """Materialize the ``GatewayRequest`` once ``poll_qr_payments`` discovers a trxRef.
+
+    From this point the payment is handled exactly like an alias-initiated
+    collection: ``reconcile_gateway`` (untouched) polls
+    ``TRANSACTION_BY_REFERENCE`` for the authoritative status and applies it
+    via the existing :func:`apply_payment_collection_status`. The status here
+    is deliberately set to PROCESSING regardless of the discovery snapshot —
+    the reference poll is the single source of truth, not this sighting.
+    """
+    if hasattr(payment, "collection"):
+        return payment.collection
+
+    session = payment.session
+    protected = session.require_delivery_confirmation
+    release_code = f"{secrets.randbelow(1_000_000):06d}" if protected else None
+    payment.release_code_hash = make_password(release_code) if protected else ""
+    payment.release_code_failed_attempts = 0
+    payment.release_code_locked_at = None
+    payment.release_code_confirmed_at = None
+    payment.provider_reference = trx_ref
+    payment.status = Payment.Status.COLLECTION_PENDING
+    payment.save(
+        update_fields=[
+            "release_code_hash",
+            "release_code_failed_attempts",
+            "release_code_locked_at",
+            "release_code_confirmed_at",
+            "provider_reference",
+            "status",
+            "updated_at",
+        ]
+    )
+    req_id = new_collection_request_id(prefix="AMP-QR")
+    collection = persist_collection_request(
+        request_id=req_id,
+        payload={"paymentReference": payment.reference, "trxRef": trx_ref, "source": "qr"},
+        result={"trxRef": trx_ref, "status": "PROCESSING"},
+        payment=payment,
+        release_code=release_code,
+    )
+    PaymentStatusHistory.objects.create(
+        payment=payment, status=payment.status, source="qr"
+    )
+    session.status = PaymentSession.Status.AWAITING_PAYMENT
+    session.save(update_fields=["status", "updated_at"])
+    return collection
 
 
 @transaction.atomic
@@ -168,6 +286,43 @@ def create_checkout_payment_and_collection(session, verification):
     return submit_checkout_payment_collection(payment)
 
 
+def _resolve_qr_payer_identity(payment, debtor_alias):
+    """Best-effort: QR payments have no known payer until the gateway's
+    transaction lookup reveals one (``debtorAlias``). Verify it the same way
+    the alias-push flow verifies its payer upfront, so a completed QR
+    payment ends up just as complete a record. Never blocks completion — a
+    missing/failed lookup just leaves payer fields blank, exactly as today.
+
+    Returns the list of Payment field names it set, if any, so the caller
+    can include them in its own ``save(update_fields=...)``.
+    """
+    debtor_alias = (debtor_alias or "").strip()
+    if not debtor_alias:
+        return []
+
+    from apps.gateway.services import AliasNotPayableError, verify_merchant_payer_alias
+
+    try:
+        verification = verify_merchant_payer_alias(
+            merchant=payment.merchant, payer_alias=debtor_alias
+        )
+    except AliasNotPayableError:
+        return []
+    except Exception:
+        logging.getLogger(__name__).exception(
+            "Could not verify QR payer alias for payment %s", payment.reference
+        )
+        return []
+
+    verification.session = payment.session
+    verification.save(update_fields=["session", "updated_at"])
+    payment.payer_alias_type = "MOBILE"
+    payment.payer_alias = verification.alias_value
+    payment.payer_display_name = verification.display_name
+    payment.payer_reference = verification.provider_customer_ref
+    return ["payer_alias_type", "payer_alias", "payer_display_name", "payer_reference"]
+
+
 @transaction.atomic
 def apply_payment_collection_status(payment, status, data):
     """Apply an collection status update to a checkout payment and its session."""
@@ -186,7 +341,10 @@ def apply_payment_collection_status(payment, status, data):
     payment.failure_code = data.get("reasonCode", "")
     if status == "COMPLETED":
         payment.paid_at = data.get("completedAt") or timezone.now()
-    payment.save(update_fields=["status", "failure_code", "paid_at", "updated_at"])
+    update_fields = ["status", "failure_code", "paid_at", "updated_at"]
+    if status == "COMPLETED" and not payment.payer_alias:
+        update_fields += _resolve_qr_payer_identity(payment, data.get("debtorAlias"))
+    payment.save(update_fields=update_fields)
     PaymentStatusHistory.objects.create(
         payment=payment,
         status=payment.status,

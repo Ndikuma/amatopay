@@ -332,6 +332,21 @@ form label {
     font-size: 10px;
 }
 
+.qr-field {
+    display: flex;
+    justify-content: center;
+    padding: 16px;
+    border: 1px solid #cfdadd;
+    border-radius: 9px;
+    background: white;
+}
+
+.qr-field img {
+    display: block;
+    width: 220px;
+    height: 220px;
+}
+
 .pay-button {
     display: flex;
     width: 100%;
