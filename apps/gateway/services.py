@@ -128,7 +128,7 @@ def apply_collection_status(data):
         raise ValueError("collection status update is missing trxRef")
 
     collection_qs = (
-        GatewayRequest.objects.select_for_update()
+        GatewayRequest.objects.select_for_update(of=("self",))
         .filter(rail=GatewayRequest.Rail.COLLECTION)
         .select_related("payment", "plan_request")
     )
