@@ -11,6 +11,7 @@ from apps.deliveries.models import DeliveryConfirmation
 from apps.fiduciary.models import FiduciaryAccount
 from apps.merchants.models import Merchant, MerchantSettlementAccount
 from apps.payments.models import Payment, PaymentStatusHistory
+from apps.deliveries.services import retry_pending_instant_settlements
 from apps.payments.services import apply_payment_collection_status
 from apps.webhooks.models import WebhookEvent
 
@@ -108,3 +109,51 @@ class InstantSettlementFlowTests(TestCase):
         self.assertIn("delivery.confirmed", types)
         paid = WebhookEvent.objects.get(merchant=self.merchant, type="payment.paid")
         self.assertTrue(paid.payload["data"]["instant_settlement"])
+
+    def test_completed_collection_without_settlement_account_still_marks_paid(self):
+        """A merchant with no verified settlement destination must not lose the
+        collected payment — only the instant-settlement release step defers."""
+        self.merchant.settlement_accounts.all().delete()
+
+        apply_payment_collection_status(
+            self.payment, "COMPLETED",
+            {"trxRef": "T-2", "status": "COMPLETED"},
+        )
+
+        self.payment.refresh_from_db()
+        self.assertEqual(self.payment.status, Payment.Status.DELIVERY_PENDING)
+        self.assertIsNone(self.payment.release_code_confirmed_at)
+        self.assertFalse(hasattr(self.payment, "delivery"))
+
+        types = set(
+            WebhookEvent.objects.filter(merchant=self.merchant).values_list("type", flat=True)
+        )
+        self.assertIn("payment.paid", types)
+        self.assertNotIn("delivery.confirmed", types)
+
+    @patch("apps.deliveries.services.start_merchant_payout")
+    def test_retry_releases_once_merchant_gets_verified_account(self, payout):
+        self.merchant.settlement_accounts.all().delete()
+        apply_payment_collection_status(
+            self.payment, "COMPLETED",
+            {"trxRef": "T-3", "status": "COMPLETED"},
+        )
+        self.payment.refresh_from_db()
+        self.assertEqual(self.payment.status, Payment.Status.DELIVERY_PENDING)
+
+        released, failed = retry_pending_instant_settlements()
+        self.assertEqual((released, failed), (0, 0))
+
+        MerchantSettlementAccount.objects.create(
+            merchant=self.merchant, alias_type="MOBILE", alias_value="+25768000001",
+            account_name="Bus Co", currency="BIF", verification_status="verified",
+            is_primary=True, is_active=True,
+        )
+        with self.captureOnCommitCallbacks(execute=True):
+            released, failed = retry_pending_instant_settlements()
+        self.assertEqual((released, failed), (1, 0))
+
+        self.payment.refresh_from_db()
+        self.assertEqual(self.payment.status, Payment.Status.RELEASE_PENDING)
+        self.assertIsNotNone(self.payment.release_code_confirmed_at)
+        payout.assert_called_once()

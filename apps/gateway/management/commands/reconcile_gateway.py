@@ -5,6 +5,7 @@ from django.core.management.base import BaseCommand
 from django.db.models import Q
 from django.utils import timezone
 
+from apps.deliveries.services import retry_pending_instant_settlements
 from apps.gateway.models import GatewayRequest
 from apps.gateway.services import (
     recover_p2p_status,
@@ -35,6 +36,11 @@ class Command(BaseCommand):
 
     def _reconcile(self, limit):
         now = timezone.now()
+        released, release_failed = retry_pending_instant_settlements(limit)
+        if released or release_failed:
+            self.stdout.write(
+                f"Instant settlement retries: released={released}, failed={release_failed}"
+            )
         ready_settlements = (
             Settlement.objects.select_related("payment", "merchant")
             .filter(

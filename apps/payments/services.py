@@ -377,11 +377,23 @@ def apply_payment_collection_status(payment, status, data):
         )
         # Instant-settlement sessions have no delivery gate: auto-confirm and
         # release straight away. Runs after payment.paid so that event still
-        # carries the clean "held" status.
+        # carries the clean "held" status. Isolated in its own savepoint: a
+        # merchant with no verified settlement account yet must not roll
+        # back the payment collection itself — the payment stays PAID/held,
+        # and this step needs a manual retry once the merchant is set up
+        # (no automatic retry exists yet).
         if not payment.session.require_delivery_confirmation:
             from apps.deliveries.services import confirm_delivery_instant
 
-            confirm_delivery_instant(payment)
+            try:
+                with transaction.atomic():
+                    confirm_delivery_instant(payment)
+            except Exception:
+                logging.getLogger(__name__).exception(
+                    "Instant settlement release deferred for payment %s: "
+                    "merchant has no verified settlement destination yet.",
+                    payment.reference,
+                )
     elif status in {"REJECTED", "FAILED", "CANCELLED"}:
         payment.session.status = PaymentSession.Status.FAILED
         payment.session.save(update_fields=["status", "updated_at"])

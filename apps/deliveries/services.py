@@ -1,3 +1,5 @@
+import logging
+
 from django.contrib.auth.hashers import check_password
 from django.db import transaction
 from django.utils import timezone
@@ -219,6 +221,48 @@ def confirm_delivery_instant(payment):
             payment.reference,
         )
     return confirmation, created
+
+
+def retry_pending_instant_settlements(limit=100):
+    """Release instant-settlement payments still held because the merchant had
+    no verified settlement destination at collection time.
+
+    ``apply_payment_collection_status`` marks such a payment PAID/held but
+    defers ``confirm_delivery_instant`` if the merchant isn't set up yet
+    (see that function's savepoint isolation). This sweeps those payments and
+    releases the ones whose merchant now has a verified destination — safe to
+    call repeatedly since each candidate is re-checked before release.
+    """
+    candidates = (
+        Payment.objects.filter(
+            status=Payment.Status.DELIVERY_PENDING,
+            release_code_confirmed_at__isnull=True,
+            session__require_delivery_confirmation=False,
+        )
+        .select_related("merchant", "session")
+        .order_by("created_at")[:limit]
+    )
+    released = failed = 0
+    for payment in candidates:
+        has_destination = payment.merchant.settlement_accounts.filter(
+            alias_type="MOBILE",
+            verification_status="verified",
+            is_primary=True,
+            is_active=True,
+            currency=payment.currency,
+        ).exists()
+        if not has_destination:
+            continue
+        try:
+            confirm_delivery_instant(payment)
+            released += 1
+        except Exception:
+            failed += 1
+            logging.getLogger(__name__).exception(
+                "Retry of instant settlement release failed for payment %s",
+                payment.reference,
+            )
+    return released, failed
 
 
 def _normalize_alias(value):
