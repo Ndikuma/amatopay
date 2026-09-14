@@ -16,8 +16,8 @@ Monitoring behavior:
 - successful polls reset the failure counter and schedule the next normal poll;
 - timeouts, 404s and gateway failures use bounded exponential backoff;
 - HTTP 429 stops the current cycle early to avoid amplifying rate limiting;
-- every poll writes an immutable `GatewayTransactionPoll` audit record;
-- terminal status application remains idempotent through callback event identifiers;
+- poll bookkeeping (`last_polled_at`, `poll_attempts`, `consecutive_poll_failures`, `last_poll_error`) lives directly on `GatewayRequest`, so a no-op poll writes no extra row;
+- terminal status application remains idempotent through callback event identifiers, recorded exactly once as a `GatewayCallback`;
 - transaction references are unique per rail and mismatched references are rejected.
 
 Operators can inspect poll history in **Unfold → Gateway → Transaction monitoring**.

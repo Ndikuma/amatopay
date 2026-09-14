@@ -189,27 +189,6 @@ class GatewayCallback(UUIDModel, TimeStampedModel):
     payload = models.JSONField(default=dict, blank=True)
 
 
-class GatewayTransactionPoll(UUIDModel, TimeStampedModel):
-    class Rail(models.TextChoices):
-        COLLECTION = "COLLECTION", "Collection"
-        P2P = "P2P", "P2P payout"
-
-    rail = models.CharField(max_length=12, choices=Rail.choices, db_index=True)
-    request_id = models.CharField(max_length=100, db_index=True)
-    trx_ref = models.CharField(max_length=120, db_index=True)
-    status = models.CharField(max_length=30, blank=True)
-    succeeded = models.BooleanField(default=False, db_index=True)
-    response = models.JSONField(default=dict, blank=True)
-    error = models.TextField(blank=True)
-    duration_ms = models.PositiveIntegerField(default=0)
-
-    class Meta:
-        ordering = ["-created_at"]
-        indexes = [
-            models.Index(fields=["rail", "trx_ref", "-created_at"], name="idx_gateway_poll_trx"),
-        ]
-
-
 class QRPaymentWatch(UUIDModel, TimeStampedModel):
     """Tracks a passive watch on AmatoPay's shared QR after a ``qr.scan()`` call.
 

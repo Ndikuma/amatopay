@@ -13,7 +13,6 @@ from .models import (
     GatewayCallback,
     GatewayConfig,
     GatewayRequest,
-    GatewayTransactionPoll,
     QRPaymentWatch,
 )
 
@@ -193,22 +192,6 @@ admin.site.register(
     [AliasVerification, GatewayCallback],
     ReadOnlyAmatoModelAdmin,
 )
-
-
-@admin.register(GatewayTransactionPoll)
-class GatewayTransactionPollAdmin(ReadOnlyAmatoModelAdmin):
-    list_display = (
-        "rail",
-        "trx_ref",
-        "request_id",
-        "status",
-        "succeeded",
-        "duration_ms",
-        "created_at",
-    )
-    list_filter = ("rail", "succeeded", "status")
-    search_fields = ("trx_ref", "request_id", "error")
-    readonly_fields = [field.name for field in GatewayTransactionPoll._meta.fields]
 
 
 @admin.register(QRPaymentWatch)

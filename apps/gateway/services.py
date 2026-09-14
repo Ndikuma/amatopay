@@ -1,4 +1,3 @@
-import time
 import re
 from datetime import timedelta
 
@@ -11,7 +10,6 @@ from .models import (
     AliasVerification,
     GatewayCallback,
     GatewayRequest,
-    GatewayTransactionPoll,
 )
 from . import client
 from .collection import PaymentGatewayError, redact_release_code
@@ -172,7 +170,7 @@ def recover_collection_status(collection):
     import logging
 
     """Poll MobileCash and apply the collection result idempotently."""
-    result = _poll_transaction(collection, GatewayTransactionPoll.Rail.COLLECTION, client.get_collection_status)
+    result = _poll_transaction(collection, client.get_collection_status)
     status = str(result.get("status", "PENDING")).upper()
     if status == collection.status.upper():
         return None
@@ -297,7 +295,7 @@ def start_merchant_payout(settlement):
 
 def recover_p2p_status(p2p):
     """Poll a MobileCash P2P payout when no institution callback is available."""
-    result = _poll_transaction(p2p, GatewayTransactionPoll.Rail.P2P, client.get_p2p_status)
+    result = _poll_transaction(p2p, client.get_p2p_status)
     status = str(result.get("status", "PROCESSING")).upper()
     if status == p2p.status.upper():
         return None
@@ -313,14 +311,20 @@ def recover_p2p_status(p2p):
     )
 
 
-def _poll_transaction(request_record, rail, getter):
-    """Poll by the persisted trxRef and retain durable retry/audit state."""
-    started = time.monotonic()
+def _poll_transaction(request_record, getter):
+    """Poll by the persisted trxRef, retaining durable retry state on the request itself.
+
+    No separate poll-audit row is written here — ``GatewayRequest`` already
+    carries its own poll bookkeeping (``last_polled_at``, ``poll_attempts``,
+    ``consecutive_poll_failures``, ``last_poll_error``), and every actual
+    status transition is recorded exactly once via ``GatewayCallback``
+    (deduped by ``event_id``) when the caller applies the result. A poll
+    that reports no change writes nothing beyond the bookkeeping fields.
+    """
     now = timezone.now()
     try:
         result = getter(request_record.trx_ref)
     except Exception as exc:
-        duration_ms = max(0, int((time.monotonic() - started) * 1000))
         status_code = getattr(exc, "status_code", None)
         failures = request_record.consecutive_poll_failures + 1
         base_delay = 30 if status_code == 429 else 10
@@ -332,17 +336,7 @@ def _poll_transaction(request_record, rail, getter):
             consecutive_poll_failures=failures,
             last_poll_error=str(exc)[:2000],
         )
-        GatewayTransactionPoll.objects.create(
-            rail=rail,
-            request_id=request_record.request_id,
-            trx_ref=request_record.trx_ref,
-            succeeded=False,
-            error=str(exc)[:4000],
-            duration_ms=duration_ms,
-        )
         raise
-    duration_ms = max(0, int((time.monotonic() - started) * 1000))
-    new_status = str(result.get("status", "")).upper()
     type(request_record).objects.filter(pk=request_record.pk).update(
         last_polled_at=now,
         next_poll_at=now + timedelta(seconds=20),
@@ -350,17 +344,6 @@ def _poll_transaction(request_record, rail, getter):
         consecutive_poll_failures=0,
         last_poll_error="",
     )
-    current_status = request_record.status.upper()
-    if new_status and new_status != current_status:
-        GatewayTransactionPoll.objects.create(
-            rail=rail,
-            request_id=request_record.request_id,
-            trx_ref=request_record.trx_ref,
-            status=new_status,
-            succeeded=True,
-            response=result,
-            duration_ms=duration_ms,
-        )
     return result
 
 

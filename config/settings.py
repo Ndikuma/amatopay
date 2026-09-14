@@ -179,7 +179,6 @@ UNFOLD = {
                     {"title": "Collections", "icon": "call_received", "link": _gateway_rail_link("COLLECTION"), "badge": "config.admin_badges.pending_collections", "badge_variant": "warning"},
                     {"title": "P2P payouts", "icon": "call_made", "link": _gateway_rail_link("P2P"), "badge": "config.admin_badges.pending_p2p", "badge_variant": "warning"},
                     {"title": "Gateway callbacks", "icon": "sync_alt", "link": reverse_lazy("admin:cecf_gatewaycallback_changelist")},
-                    {"title": "Transaction monitoring", "icon": "monitor_heart", "link": reverse_lazy("admin:cecf_gatewaytransactionpoll_changelist")},
                 ],
             },
             {

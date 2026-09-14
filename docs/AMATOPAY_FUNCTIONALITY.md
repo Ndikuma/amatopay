@@ -206,8 +206,9 @@ Merchant server
 - **GatewayRequest** — one unified model for both rails, tagged by `rail`:
   - `COLLECTION` — pulling funds from the payer.
   - `P2P` — paying out to the merchant.
-- **GatewayCallback** — inbound notifications from the rail.
-- **GatewayTransactionPoll** — the reconciliation poller's state per request.
+- **GatewayCallback** — inbound notifications from the rail, and the durable
+  record of every status transition applied by the poller (deduped by
+  `event_id`); poll bookkeeping itself lives on `GatewayRequest`.
 - `reconcile_gateway` — polls every in-flight collection and payout, applies
   status transitions, respects rate limits, and starts pending payouts.
 - A start-up **system check** warns if no active gateway configuration exists.
@@ -329,7 +330,7 @@ system-driven.
 | Checkout | PaymentSession |
 | Payments | Payment, PaymentStatusHistory, TransactionFee, IdempotencyRecord |
 | Billing | PricingPlan, MerchantPlanAssignment, PlanRequest |
-| Gateway (rail) | GatewayConfig, AliasVerification, GatewayRequest, GatewayCallback, GatewayTransactionPoll |
+| Gateway (rail) | GatewayConfig, AliasVerification, GatewayRequest, GatewayCallback |
 | Merchants | MerchantApplication, MerchantApplicationReview, Merchant, MerchantKYB, MerchantDocument, MerchantSettlementAccount, MerchantApiKey, MerchantWebhookEndpoint, MerchantActivity |
 | Fiduciary | FiduciaryAccount, FundHold, FiduciaryEntry |
 | Deliveries | Delivery, DeliveryConfirmation, ProtectionClaim, ProtectionClaimEvidence, ProtectionClaimEvent |

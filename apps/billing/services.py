@@ -203,6 +203,29 @@ def initiate_plan_request_payment(plan_request):
 
 
 @transaction.atomic
+def apply_plan_request_collection_status(plan_request, status, data):
+    """Apply a collection status update to a plan subscription request."""
+    from .models import PlanRequest
+
+    mapping = {
+        "PENDING": PlanRequest.Status.PENDING_PAYMENT,
+        "AWAITING_APPROVAL": PlanRequest.Status.PENDING_PAYMENT,
+        "PROCESSING": PlanRequest.Status.PENDING_PAYMENT,
+        "COMPLETED": PlanRequest.Status.PAID,
+        "REJECTED": PlanRequest.Status.FAILED,
+        "FAILED": PlanRequest.Status.FAILED,
+        "CANCELLED": PlanRequest.Status.CANCELLED,
+    }
+    plan_request = PlanRequest.objects.select_for_update().get(pk=plan_request.pk)
+    plan_request.status = mapping[status]
+    if status == "COMPLETED":
+        plan_request.paid_at = data.get("completedAt") or timezone.now()
+    plan_request.save(update_fields=["status", "paid_at", "updated_at"])
+    if status == "COMPLETED":
+        activate_requested_plan(plan_request)
+
+
+@transaction.atomic
 def apply_billing_collection_status(collection, status, data):
     """Dispatch an collection status update to the correct billing workflow handler."""
     if collection.plan_request_id:
